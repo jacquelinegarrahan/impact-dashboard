@@ -12,9 +12,9 @@ def compile_static_assets(assets):
     assets.auto_build = True
     assets.debug = False
     less_bundle = Bundle(
-        "less/*.less",
+        "less/*.less", 'scripts.js', 
         filters="less,cssmin",
-        output="dist/css/styles.css",
+        output="impact_dashboard/static/dist/css/styles.css",
         extra={"rel": "stylesheet/less"},
     )
     assets.register("less_all", less_bundle)
