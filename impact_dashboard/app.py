@@ -11,7 +11,7 @@ import plotly.express as px
 from pymongo import MongoClient
 from dash.dependencies import Input, Output, ClientsideFunction, State, MATCH, ALL
 import os
-from .layout import html_layout
+from impact_dashboard.layout import html_layout
 
 
 MONGO_HOST = os.environ["MONGO_HOST"]
@@ -152,7 +152,6 @@ def build_card(x: str = None, y: str = None, selected_data: list = None):
         y (str): Variable for plot's y axis
         selected_data (list): Selected points for sharing across plots
 
-
     """
 
     # Global variable card index tracks the number of cards created
@@ -207,7 +206,9 @@ def build_card(x: str = None, y: str = None, selected_data: list = None):
                     html.Div(
                         dcc.Dropdown(
                             id={"type": "dynamic-coloring", "index": CARD_COUNT,},
-                            options=options + [{"label": "No coloring", "value": None}],
+                            options=options + [{"label": "None", "value": "None"}],
+                            value= "None",
+                            clearable=False,
                         ),
                         style={
                             "width": "32%",
@@ -281,12 +282,10 @@ def build_df():
             pass
 
 
-def init_dashboard(server):
+def init_dashboard():
     """Create a Plotly Dash dashboard."""
     # pass our own flask server instead of using Dash's
     app = dash.Dash(
-        server=server,
-        routes_pathname_prefix="/dashapp/",
         external_stylesheets=[
             "/static/dist/css/styles.css",
             "https://fonts.googleapis.com/css?family=Lato",
@@ -317,20 +316,19 @@ def init_dashboard(server):
     app.layout = html.Div(
         children=[
             dbc.Row(
-                children=[
+                children= [
                     html.Img(
                         id="dash-image",
                         src=DF["plot_file"].iloc[0],
-                        style={"height": "75vh", "display": "inline-block"},
+                        style={"width": "50%", "display": "inline-block"},
                     ),
                     dash_table.DataTable(
                         id="input-table",
                         columns=[{"name": "inputs", "id": "inputs"}, {"name": "value", "id": "value"}],
                         data=input_rep,
                         sort_action="native",
-                        sort_mode="native",
                         page_size=300,
-                        style_table={'height': '100vh', 'overflowY': 'auto'},
+                        style_table={'width': '25%', 'overflowY': 'auto'},
                         fixed_rows={'headers': True},
                     ),
                     dash_table.DataTable(
@@ -338,9 +336,8 @@ def init_dashboard(server):
                         columns=[{"name": "outputs", "id": "outputs"}, {"name": "value", "id": "value"}],
                         data=output_rep,
                         sort_action="native",
-                        sort_mode="native",
                         page_size=300,
-                        style_table={'height': '100vh', 'overflowY': 'auto'},
+                        style_table={'width': '25%', 'overflowY': 'auto'},
                         fixed_rows={'headers': True},
                     ),
                 ]
@@ -368,7 +365,7 @@ def init_dashboard(server):
 
     init_callbacks(app)
 
-    return app.server
+    return app
 
 
 def create_data_table(df):
@@ -543,7 +540,7 @@ def get_scatter(x_col, y_col, selectedpoints, color_by=None):
     else:
         selectedpoints = []
 
-    if not color_by:
+    if color_by == "None":
         fig.update_traces(
             selectedpoints=selectedpoints,
             mode="markers+text",
@@ -571,4 +568,5 @@ def get_scatter(x_col, y_col, selectedpoints, color_by=None):
 
 
 if __name__ == "__main__":
+    app = init_dashboard()
     app.run_server(debug=True)
