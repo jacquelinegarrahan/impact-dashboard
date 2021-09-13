@@ -13,6 +13,12 @@ from dash.dependencies import Input, Output, ClientsideFunction, State, MATCH, A
 import os
 from impact_dashboard.layout import html_layout
 
+theme = {
+    'dark': True,
+    'detail': '#007439',
+    'primary': '#00EA64',
+    'secondary': '#6E6E6E',
+}
 
 MONGO_HOST = os.environ["MONGO_HOST"]
 MONGO_PORT = int(os.environ["MONGO_PORT"])
@@ -159,7 +165,7 @@ def build_card(x: str = None, y: str = None, selected_data: list = None):
 
     options = [
         {"label": input_item, "value": input_item}
-        for input_item in set.union(ALL_INPUTS, ALL_OUTPUTS)
+        for input_item in ALL_INPUTS+ ALL_OUTPUTS
     ]
 
     # use default input/output when creating a card
@@ -206,9 +212,8 @@ def build_card(x: str = None, y: str = None, selected_data: list = None):
                     html.Div(
                         dcc.Dropdown(
                             id={"type": "dynamic-coloring", "index": CARD_COUNT,},
-                            options=options + [{"label": "None", "value": "None"}],
-                            value= "None",
-                            clearable=False,
+                            options=options,
+                            clearable=True,
                         ),
                         style={
                             "width": "32%",
@@ -281,15 +286,19 @@ def build_df():
         except:
             pass
 
+    ALL_INPUTS=list(ALL_INPUTS)
+    ALL_OUTPUTS=list(ALL_OUTPUTS)
+
 
 def init_dashboard():
     """Create a Plotly Dash dashboard."""
     # pass our own flask server instead of using Dash's
     app = dash.Dash(
         external_stylesheets=[
-            "/static/dist/css/styles.css",
-            "https://fonts.googleapis.com/css?family=Lato",
-            dbc.themes.BOOTSTRAP,
+          #  "/static/dist/css/styles.css",
+          #  "https://fonts.googleapis.com/css?family=Lato",
+        #    dbc.themes.BOOTSTRAP,
+             dbc.themes.DARKLY
         ],
         external_scripts=[
             "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML"
@@ -298,16 +307,8 @@ def init_dashboard():
 
     build_df()
 
-    input_res = list(DB.results.find())[0]["inputs"]
-    inputs = list(input_res.keys())
-    input_values = list(input_res.values())
-
-    input_rep = [{"inputs": inputs[i], "value": input_values[i]} for i in range(len(inputs))]
-
-    output_res = list(DB.results.find())[0]["outputs"]
-    outputs = list(output_res.keys())
-    output_values = list(output_res.values())
-    output_rep = [{"outputs": outputs[i], "value": output_values[i]} for i in range(len(outputs))]
+    input_rep = [{"inputs": ALL_INPUTS[i], "value": DF[ALL_INPUTS[i]].iloc[0]} for i in range(len(ALL_INPUTS))]
+    output_rep = [{"inputs": ALL_OUTPUTS[i], "value": DF[ALL_OUTPUTS[i]].iloc[0]} for i in range(len(ALL_OUTPUTS))]
 
     # Custom HTML layout
     app.index_string = html_layout
@@ -328,7 +329,12 @@ def init_dashboard():
                         data=input_rep,
                         sort_action="native",
                         page_size=300,
-                        style_table={'width': '25%', 'overflowY': 'auto'},
+                        style_table={'overflowY': 'auto','overflowX': 'auto'},
+                        style_header={'backgroundColor': 'rgb(30, 30, 30)'},
+                        style_cell={
+                            'backgroundColor': 'rgb(50, 50, 50)',
+                            'color': 'white'
+                        },
                         fixed_rows={'headers': True},
                     ),
                     dash_table.DataTable(
@@ -337,7 +343,16 @@ def init_dashboard():
                         data=output_rep,
                         sort_action="native",
                         page_size=300,
-                        style_table={'width': '25%', 'overflowY': 'auto'},
+                        style_table={'overflowY': 'auto', 'overflowX': 'auto'},
+                        style_header={'backgroundColor': 'rgb(30, 30, 30)'},
+                        style_cell={
+                            'backgroundColor': 'rgb(50, 50, 50)',
+                            'color': 'white'
+                        },
+                        style_data={
+                                'whiteSpace': 'normal',
+                                'height': 'auto',
+                            },
                         fixed_rows={'headers': True},
                     ),
                 ]
@@ -540,7 +555,7 @@ def get_scatter(x_col, y_col, selectedpoints, color_by=None):
     else:
         selectedpoints = []
 
-    if color_by == "None":
+    if not color_by:
         fig.update_traces(
             selectedpoints=selectedpoints,
             mode="markers+text",
@@ -556,7 +571,6 @@ def get_scatter(x_col, y_col, selectedpoints, color_by=None):
         fig.update_coloraxes(colorbar_title_side="right")
 
     fig.update_layout(
-        font_family="Courier New",
         font_color="black",
         font_size=10,
         margin={"l": 20, "r": 0, "b": 15, "t": 5},
