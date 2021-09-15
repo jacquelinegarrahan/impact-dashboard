@@ -12,13 +12,7 @@ from pymongo import MongoClient
 from dash.dependencies import Input, Output, ClientsideFunction, State, MATCH, ALL
 import os
 from impact_dashboard.layout import html_layout
-
-theme = {
-    'dark': True,
-    'detail': '#007439',
-    'primary': '#00EA64',
-    'secondary': '#6E6E6E',
-}
+from impact_dashboard import CONFIG
 
 MONGO_HOST = os.environ["MONGO_HOST"]
 MONGO_PORT = int(os.environ["MONGO_PORT"])
@@ -49,6 +43,7 @@ ALL_OUTPUTS = [DEFAULT_OUTPUT]
 
 CARD_COUNT=0
 CARD_INDICES ={}
+LIVE_CARD_COUNT = 0
 
 
 LABELS = {
@@ -193,7 +188,7 @@ def build_card(x: str = None, y: str = None, selected_data: list = None):
                         style={
                             "width": "32%",
                             "display": "inline-block",
-                            "font-size": "10px",
+                            "font-size": CONFIG["card"]["font-size"],
                         },
                     ),
                     html.Div(
@@ -206,7 +201,7 @@ def build_card(x: str = None, y: str = None, selected_data: list = None):
                         style={
                             "width": "32%",
                             "display": "inline-block",
-                            "font-size": "10px",
+                            "font-size": CONFIG["card"]["font-size"],
                         },
                     ),
                     html.Div(
@@ -218,14 +213,14 @@ def build_card(x: str = None, y: str = None, selected_data: list = None):
                         style={
                             "width": "32%",
                             "display": "inline-block",
-                            "font-size": "10px",
+                            "font-size": CONFIG["card"]["font-size"],
                         },
                     ),
                     html.Div(
                         dcc.Graph(
                             id={"type": "scatter-plot", "index": CARD_COUNT,},
                             figure=get_scatter(x, y, selected_data),
-                            style={"height": "40vh"},
+                            style={"height": CONFIG["card"]["plot-height"]},
 
                         ),
                         style={"width": "100%", "display": "inline-block"},
@@ -234,7 +229,10 @@ def build_card(x: str = None, y: str = None, selected_data: list = None):
             )
         ),
     )
-    CARD_INDICES[CARD_COUNT] = CARD_COUNT
+    if CARD_INDICES.values():
+        CARD_INDICES[CARD_COUNT] = max(CARD_INDICES.values()) + 1
+    else:  
+        CARD_INDICES[CARD_COUNT] = 0
     CARD_COUNT += 1
     return card
 
@@ -308,7 +306,7 @@ def init_dashboard():
     build_df()
 
     input_rep = [{"inputs": ALL_INPUTS[i], "value": DF[ALL_INPUTS[i]].iloc[0]} for i in range(len(ALL_INPUTS))]
-    output_rep = [{"inputs": ALL_OUTPUTS[i], "value": DF[ALL_OUTPUTS[i]].iloc[0]} for i in range(len(ALL_OUTPUTS))]
+    output_rep = [{"outputs": ALL_OUTPUTS[i], "value": DF[ALL_OUTPUTS[i]].iloc[0]} for i in range(len(ALL_OUTPUTS))]
 
     # Custom HTML layout
     app.index_string = html_layout
@@ -321,33 +319,40 @@ def init_dashboard():
                     html.Img(
                         id="dash-image",
                         src=DF["plot_file"].iloc[0],
-                        style={"width": "50%", "display": "inline-block"},
+                        style={"width": CONFIG["dash"]["width"], "display": "inline-block"},
                     ),
+                    html.Div(
                     dash_table.DataTable(
                         id="input-table",
                         columns=[{"name": "inputs", "id": "inputs"}, {"name": "value", "id": "value"}],
                         data=input_rep,
                         sort_action="native",
-                        page_size=300,
-                        style_table={'overflowY': 'auto','overflowX': 'auto'},
-                        style_header={'backgroundColor': 'rgb(30, 30, 30)'},
+                        #page_size=300,
+                        style_table={'overflowY': 'auto','overflowX': 'auto', 'width': CONFIG['tables']['width']},
+                        style_header={'backgroundColor': CONFIG["tables"]["header-background-color"]},
                         style_cell={
-                            'backgroundColor': 'rgb(50, 50, 50)',
-                            'color': 'white'
+                            'backgroundColor': CONFIG['tables']['cell-background-color'],
+                            'color': CONFIG['tables']['text-color'],
+                            'fontSize': CONFIG['tables']['font-size'],
+                            'textAlign': 'left'
                         },
                         fixed_rows={'headers': True},
                     ),
+                    style={"display":"inline-block"}
+                    ),
+                    html.Div(
                     dash_table.DataTable(
                         id="output-table",
                         columns=[{"name": "outputs", "id": "outputs"}, {"name": "value", "id": "value"}],
                         data=output_rep,
                         sort_action="native",
-                        page_size=300,
-                        style_table={'overflowY': 'auto', 'overflowX': 'auto'},
-                        style_header={'backgroundColor': 'rgb(30, 30, 30)'},
+                        #page_size=300,
+                        style_table={'overflowY': 'auto', 'overflowX': 'auto', 'width': CONFIG['tables']['width']},
+                        style_header={'backgroundColor': CONFIG["tables"]["header-background-color"]},
                         style_cell={
-                            'backgroundColor': 'rgb(50, 50, 50)',
-                            'color': 'white'
+                            'backgroundColor': CONFIG['tables']['cell-background-color'],
+                            'color': CONFIG['tables']['text-color'],
+                            'fontSize': CONFIG['tables']['font-size']
                         },
                         style_data={
                                 'whiteSpace': 'normal',
@@ -355,6 +360,8 @@ def init_dashboard():
                             },
                         fixed_rows={'headers': True},
                     ),
+                    style={"display":"inline-block"}
+                    )
                 ]
             ),
             dbc.Row(
@@ -505,11 +512,12 @@ def init_callbacks(app):
         if "dynamic-remove" in triggered["prop_id"]:
             prop_id = json.loads(triggered["prop_id"].replace(".n_clicks", ""))
             prop_idx = prop_id["index"]
-            children.pop(CARD_INDICES[prop_idx])
+            card_idx = CARD_INDICES.pop(prop_idx)
+            children.pop(card_idx)
 
             # update card indices for all greater values
             for item in CARD_INDICES.keys():
-                if CARD_INDICES[item] > CARD_INDICES[prop_idx]:
+                if CARD_INDICES[item] > card_idx:
                     CARD_INDICES[item] -= 1
 
         else:
@@ -532,6 +540,7 @@ def get_scatter(x_col, y_col, selectedpoints, color_by=None):
         color=color_by,
         color_continuous_scale="viridis",
         labels={x_col: LABELS.get(x_col, x_col), y_col: LABELS.get(y_col, y_col)},
+        template=CONFIG["scatter"]["plotly-theme"]
     )
 
     if selectedpoints is not None:
@@ -559,9 +568,9 @@ def get_scatter(x_col, y_col, selectedpoints, color_by=None):
         fig.update_traces(
             selectedpoints=selectedpoints,
             mode="markers+text",
-            marker={"color": "rgba(214, 116, 0, 0.7)", "size": 15},
+            marker={"color": CONFIG["scatter"]["selected-marker-color"], "size": 15},
             unselected={
-                "marker": {"color": "rgba(0, 116, 217, 0.3)"},
+                "marker": {"color": CONFIG["scatter"]["marker-color"]},
                 "textfont": {"color": "rgba(0, 0, 0, 0)"},
             },
         )
@@ -571,7 +580,7 @@ def get_scatter(x_col, y_col, selectedpoints, color_by=None):
         fig.update_coloraxes(colorbar_title_side="right")
 
     fig.update_layout(
-        font_color="black",
+        font_color="grey",
         font_size=10,
         margin={"l": 20, "r": 0, "b": 15, "t": 5},
         dragmode="select",
