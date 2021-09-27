@@ -4,6 +4,7 @@ import dash_core_components as dcc
 import dash_bootstrap_components as dbc
 import dash_html_components as html
 import dash_table
+from flask_caching import Cache
 import numpy as np
 import json
 import pandas as pd
@@ -17,8 +18,7 @@ from impact_dashboard import CONFIG
 MONGO_HOST = os.environ["MONGO_HOST"]
 MONGO_PORT = int(os.environ["MONGO_PORT"])
 
-CLIENT = MongoClient(MONGO_HOST, MONGO_PORT)
-DB = CLIENT.impact
+
 DEFAULT_INPUT = "distgen:n_particle"
 DEFAULT_OUTPUT = "end_sigma_x"
 EXCLUDE_INPUTS = [
@@ -36,10 +36,79 @@ EXCLUDE_INPUTS = [
 ]
 EXCLUDE_OUTPUTS = ["plot_file", "fingerprint", "archive", "isotime"]
 
+app = dash.Dash(
+    external_stylesheets=[
+        #  "/static/dist/css/styles.css",
+        #  "https://fonts.googleapis.com/css?family=Lato",
+        #    dbc.themes.BOOTSTRAP,
+        dbc.themes.DARKLY
+    ],
+    external_scripts=[
+        "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML"
+    ],
+)
 
-DF = pd.DataFrame()
-ALL_INPUTS = [DEFAULT_INPUT]
-ALL_OUTPUTS = [DEFAULT_OUTPUT]
+cache = Cache(app.server, config={
+    'CACHE_TYPE': 'filesystem',
+    'CACHE_DIR': 'cache-directory'
+})
+
+
+TIMEOUT=10
+
+# required for building df
+def flatten_dict(d):
+    def expand(key, value):
+        if isinstance(value, dict):
+            return [(k, v) for k, v in flatten_dict(value).items()]
+        else:
+            return [(key, value)]
+
+    items = [item for k, v in d.items() for item in expand(k, v)]
+
+    return dict(items)
+
+
+CLIENT = MongoClient(MONGO_HOST, MONGO_PORT)
+DB = CLIENT.impact
+
+# build outputs/inputs
+results = DB.results
+results = list(results.find())
+
+flattened = [flatten_dict(res) for res in results]
+DF = pd.DataFrame(flattened)
+
+# Load DataFrame
+DF["date"] = pd.to_datetime(DF["isotime"])
+DF["_id"] = DF["_id"].astype(str)
+DF = DF.sort_values(by="date")
+
+ALL_INPUTS = ["date"]
+ALL_OUTPUTS = []
+for res in results:
+    ALL_INPUTS += list(res["inputs"].keys())
+    ALL_OUTPUTS += list(res["outputs"].keys())
+ALL_INPUTS = set(ALL_INPUTS)
+ALL_OUTPUTS = set(ALL_OUTPUTS)
+
+# drop all unused outputs
+for rem_output in EXCLUDE_OUTPUTS:
+    try:
+        ALL_OUTPUTS.remove(rem_output)
+    except:
+        pass
+for rem_input in EXCLUDE_INPUTS:
+    try:
+        ALL_INPUTS.remove(rem_input)
+    except:
+        pass
+
+ALL_INPUTS = list(ALL_INPUTS)
+ALL_OUTPUTS = list(ALL_OUTPUTS)
+
+
+
 
 CARD_COUNT = 0
 CARD_INDICES = {}
@@ -145,7 +214,8 @@ LABELS = {
 }
 
 
-def build_card(x: str = None, y: str = None, selected_data: list = None):
+
+def build_card(df, x: str = None, y: str = None, selected_data: list = None):
     """ Representations of plot cards used for displaying data
 
     Args:
@@ -271,7 +341,7 @@ def build_card(x: str = None, y: str = None, selected_data: list = None):
                 html.Div(
                     dcc.Graph(
                         id={"type": "scatter-plot", "index": CARD_COUNT,},
-                        figure=get_scatter(x, y, selected_data),
+                        figure=get_scatter(df, x, y, selected_data),
                         style={"height": CONFIG["card"]["plot-height"]},
                     ),
                     style={"width": "100%", "display": "inline-block"},
@@ -287,80 +357,103 @@ def build_card(x: str = None, y: str = None, selected_data: list = None):
     return card
 
 
-def flatten_dict(d):
-    def expand(key, value):
-        if isinstance(value, dict):
-            return [(k, v) for k, v in flatten_dict(value).items()]
-        else:
-            return [(key, value)]
-
-    items = [item for k, v in d.items() for item in expand(k, v)]
-
-    return dict(items)
 
 
-def build_df():
+def get_scatter(df, x_col, y_col, selectedpoints, color_by=None):
+    if color_by == "NONE":
+        color_by = None
+
+    fig = px.scatter(
+        df,
+        x=x_col,
+        y=y_col,
+        hover_data=["_id"],
+        color=color_by,
+        color_continuous_scale="viridis",
+        labels={x_col: LABELS.get(x_col, x_col), y_col: LABELS.get(y_col, y_col)},
+        template=CONFIG["scatter"]["plotly-theme"],
+    )
+
+    if selectedpoints is not None:
+        selected_df = df.iloc[selectedpoints]
+        selection_bounds = {
+            "x0": np.min(selected_df[x_col]),
+            "x1": np.max(selected_df[x_col]),
+            "y0": np.min(selected_df[y_col]),
+            "y1": np.max(selected_df[y_col]),
+        }
+        fig.add_shape(
+            dict(
+                {
+                    "type": "rect",
+                    "line": {"width": 1, "dash": "dot", "color": "darkgrey"},
+                },
+                **selection_bounds
+            )
+        )
+
+    else:
+        selectedpoints = []
+
+    if not color_by:
+        fig.update_traces(
+            selectedpoints=selectedpoints,
+            mode="markers+text",
+            marker={"color": CONFIG["scatter"]["selected-marker-color"], "size": 15},
+            unselected={
+                "marker": {"color": CONFIG["scatter"]["marker-color"]},
+                "textfont": {"color": "rgba(0, 0, 0, 0)"},
+            },
+        )
+
+    else:
+        fig.update_traces(mode="markers+text", marker={"size": 15})
+        fig.update_coloraxes(colorbar_title_side="right")
+
+    fig.update_layout(
+        font_color="grey",
+        font_size=10,
+        margin={"l": 20, "r": 0, "b": 15, "t": 5},
+        dragmode="select",
+        hovermode="closest",
+    )
+
+    return fig
+
+
+@cache.memoize(timeout=TIMEOUT)
+def get_df():
     # get data
-    global DF, ALL_INPUTS, ALL_OUTPUTS
+    CLIENT = MongoClient(MONGO_HOST, MONGO_PORT)
+    DB = CLIENT.impact
     results = DB.results
     results = list(results.find())
 
     flattened = [flatten_dict(res) for res in results]
 
-    DF = pd.DataFrame(flattened)
+    df = pd.DataFrame(flattened)
 
     # Load DataFrame
-    DF["date"] = pd.to_datetime(DF["isotime"])
-    DF["_id"] = DF["_id"].astype(str)
-    DF = DF.sort_values(by="date")
-
-    ALL_INPUTS = ["date"]
-    ALL_OUTPUTS = []
-    for res in results:
-        ALL_INPUTS += list(res["inputs"].keys())
-        ALL_OUTPUTS += list(res["outputs"].keys())
-    ALL_INPUTS = set(ALL_INPUTS)
-    ALL_OUTPUTS = set(ALL_OUTPUTS)
-
-    # drop all unused outputs
-    for rem_output in EXCLUDE_OUTPUTS:
-        try:
-            ALL_OUTPUTS.remove(rem_output)
-        except:
-            pass
-    for rem_input in EXCLUDE_INPUTS:
-        try:
-            ALL_INPUTS.remove(rem_input)
-        except:
-            pass
-
-    ALL_INPUTS = list(ALL_INPUTS)
-    ALL_OUTPUTS = list(ALL_OUTPUTS)
-
+    df["date"] = pd.to_datetime(df["isotime"])
+    df["_id"] = df["_id"].astype(str)
+    df = df.sort_values(by="date")
+    return df.to_json(date_format='iso', orient='split')
+    
+def dataframe():
+    return pd.read_json(get_df(), orient='split')
 
 def init_dashboard():
     """Create a Plotly Dash dashboard."""
     # pass our own flask server instead of using Dash's
-    app = dash.Dash(
-        external_stylesheets=[
-            #  "/static/dist/css/styles.css",
-            #  "https://fonts.googleapis.com/css?family=Lato",
-            #    dbc.themes.BOOTSTRAP,
-            dbc.themes.DARKLY
-        ],
-        external_scripts=[
-            "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML"
-        ],
-    )
 
-    build_df()
+    df = dataframe()
 
     input_rep = [
-        {"inputs": ALL_INPUTS[i], "value": DF[ALL_INPUTS[i]].iloc[0]}
+        {"inputs": ALL_INPUTS[i], "value": df[ALL_INPUTS[i]].iloc[0]}
         for i in range(len(ALL_INPUTS))
     ]
     output_rep = [
-        {"outputs": ALL_OUTPUTS[i], "value": DF[ALL_OUTPUTS[i]].iloc[0]}
+        {"outputs": ALL_OUTPUTS[i], "value": df[ALL_OUTPUTS[i]].iloc[0]}
         for i in range(len(ALL_OUTPUTS))
     ]
 
@@ -374,7 +467,7 @@ def init_dashboard():
                 children=[
                     html.Img(
                         id="dash-image",
-                        src=DF["plot_file"].iloc[0],
+                        src=df["plot_file"].iloc[0],
                         style={"width": CONFIG["dash"]["width"]},
                     ),
                     dash_table.DataTable(
@@ -443,11 +536,11 @@ def init_dashboard():
                 className="row row-cols-4",
                 id="dynamic-plots",
                 children=[
-                    build_card(x="CQ01:b1_gradient", y="SQ01:b1_gradient"),
-                    build_card(x="SOL1:solenoid_field_scale", y="end_norm_emit_y"),
-                    build_card(x="QA01:b1_gradient", y="QA02:b1_gradient"),
-                    build_card(x="QE01:b1_gradient", y="QE02:b1_gradient"),
-                    build_card(x="QE03:b1_gradient", y="QE04:b1_gradient"),
+                    build_card(df, x="CQ01:b1_gradient", y="SQ01:b1_gradient"),
+                    build_card(df, x="SOL1:solenoid_field_scale", y="end_norm_emit_y"),
+                    build_card(df, x="QA01:b1_gradient", y="QA02:b1_gradient"),
+                    build_card(df, x="QE01:b1_gradient", y="QE02:b1_gradient"),
+                    build_card(df, x="QE03:b1_gradient", y="QE04:b1_gradient"),
                     html.Div(
                         html.Button("+", id="submit-val", n_clicks=0),
                         style={"padding": 10},
@@ -457,223 +550,145 @@ def init_dashboard():
         ],
     )
 
-    init_callbacks(app)
+# initialize dashboard
+init_dashboard()
 
-    return app
+@app.callback(
+    Output({"type": "scatter-plot", "index": ALL}, "figure"),
+    Output("dash-image", "src"),
+    Output("input-table", "data"),
+    Output("output-table", "data"),
+    Input({"type": "dynamic-input", "index": ALL}, "value"),
+    Input({"type": "dynamic-output", "index": ALL}, "value"),
+    Input({"type": "scatter-plot", "index": ALL}, "selectedData"),
+    Input({"type": "scatter-plot", "index": ALL}, "clickData"),
+    Input({"type": "dynamic-coloring", "index": ALL}, "value"),
+)
+def update_plot(
+    input_value, output_value, plot_selected_data, plot_click_data, color_by
+):
+    context = dash.callback_context
 
+    triggered = context.triggered[0]
+    selected_points = []
+    updated = [dash.no_update for i in range(len(plot_selected_data))]
 
-def create_data_table(df):
-    """Create Dash datatable from Pandas DataFrame.
-    
-    Args:
-        df (pandas.DataFrame): Dataframe for generating table
-    
-    """
-    table = dash_table.DataTable(
-        id="database-table",
-        columns=[{"name": i, "id": i} for i in df.columns],
-        data=df.to_dict("records"),
-        sort_action="native",
-        sort_mode="native",
-        page_size=300,
-    )
-    return table
+    df = dataframe()
 
+    # update selected data
+    if ".selectedData" in triggered["prop_id"]:
+        if triggered["value"]:
+            selected_points = triggered["value"]["points"]
+            selected_points = [point["pointIndex"] for point in selected_points]
 
-def init_callbacks(app):
-    @app.callback(
-        Output({"type": "scatter-plot", "index": ALL}, "figure"),
-        Output("dash-image", "src"),
-        Output("input-table", "data"),
-        Output("output-table", "data"),
-        Input({"type": "dynamic-input", "index": ALL}, "value"),
-        Input({"type": "dynamic-output", "index": ALL}, "value"),
-        Input({"type": "scatter-plot", "index": ALL}, "selectedData"),
-        Input({"type": "scatter-plot", "index": ALL}, "clickData"),
-        Input({"type": "dynamic-coloring", "index": ALL}, "value"),
-    )
-    def update_plot(
-        input_value, output_value, plot_selected_data, plot_click_data, color_by
-    ):
-        context = dash.callback_context
-
-        triggered = context.triggered[0]
-        selected_points = []
-        updated = [dash.no_update for i in range(len(plot_selected_data))]
-
-        # update selected data
-        if ".selectedData" in triggered["prop_id"]:
-            if triggered["value"]:
-                selected_points = triggered["value"]["points"]
-                selected_points = [point["pointIndex"] for point in selected_points]
-
-                return (
-                    [
-                        get_scatter(
-                            input_value[i], output_value[i], selected_points, None
-                        )
-                        for i in range(len(plot_selected_data))
-                    ],
-                    dash.no_update, dash.no_update, dash.no_update
-                )
-
-            else:
-                return (
-                    [
-                        get_scatter(input_value[i], output_value[i], None, color_by[i])
-                        for i in range(len(plot_selected_data))
-                    ],
-                    dash.no_update, dash.no_update, dash.no_update
-                )
-
-        # update input/output values
-        elif ".value" in triggered["prop_id"]:
-            prop_id = json.loads(triggered["prop_id"].replace(".value", ""))
-            prop_idx = prop_id["index"]
-
-            selected_points = None
-            if (
-                plot_selected_data[0] is not None
-                and plot_selected_data[0]["points"] is not None
-            ):
-                selected_points = [
-                    point["pointIndex"] for point in plot_selected_data[0]["points"]
-                ]
-
-            updated[CARD_INDICES[prop_idx]] = get_scatter(
-                input_value[CARD_INDICES[prop_idx]],
-                output_value[CARD_INDICES[prop_idx]],
-                selected_points,
-                color_by[CARD_INDICES[prop_idx]],
-            )
-            return updated, dash.no_update, dash.no_update, dash.no_update
-
-        elif ".clickData" in triggered["prop_id"]:
-            if triggered["value"]:
-                selected_point = triggered["value"]["points"][0]["pointIndex"]
-
-                plot_returns = [
-                    get_scatter(input_value[i], output_value[i], [selected_point], None)
+            return (
+                [
+                    get_scatter(
+                        df, input_value[i], output_value[i], selected_points, None
+                    )
                     for i in range(len(plot_selected_data))
-                ]
-                img_file = DF["plot_file"].iloc[selected_point]
-
-                # update data tables
-                input_rep = [
-                    {"inputs": ALL_INPUTS[i], "value": DF[ALL_INPUTS[i]].iloc[selected_point]}
-                    for i in range(len(ALL_INPUTS))
-                ]
-                output_rep = [
-                    {"outputs": ALL_OUTPUTS[i], "value": DF[ALL_OUTPUTS[i]].iloc[selected_point]}
-                    for i in range(len(ALL_OUTPUTS))
-                ]
-
-                return plot_returns, img_file, input_rep, output_rep
+                ],
+                dash.no_update, dash.no_update, dash.no_update
+            )
 
         else:
-            pass
+            return (
+                [
+                    get_scatter(df, input_value[i], output_value[i], None, color_by[i])
+                    for i in range(len(plot_selected_data))
+                ],
+                dash.no_update, dash.no_update, dash.no_update
+            )
 
+    # update input/output values
+    elif ".value" in triggered["prop_id"]:
+        prop_id = json.loads(triggered["prop_id"].replace(".value", ""))
+        prop_idx = prop_id["index"]
+
+        selected_points = None
+        if (
+            plot_selected_data[0] is not None
+            and plot_selected_data[0]["points"] is not None
+        ):
+            selected_points = [
+                point["pointIndex"] for point in plot_selected_data[0]["points"]
+            ]
+
+        updated[CARD_INDICES[prop_idx]] = get_scatter(
+            df,
+            input_value[CARD_INDICES[prop_idx]],
+            output_value[CARD_INDICES[prop_idx]],
+            selected_points,
+            color_by[CARD_INDICES[prop_idx]],
+        )
         return updated, dash.no_update, dash.no_update, dash.no_update
 
-    @app.callback(
-        Output("dynamic-plots", "children"),
-        Input("submit-val", component_property="n_clicks"),
-        Input({"type": "dynamic-remove", "index": ALL}, component_property="n_clicks"),
-        State({"type": "dynamic-remove", "index": ALL}, "id"),
-        State("dynamic-plots", "children"),
-    )
-    def update_cards(n_clicks, n_clicks_remove, remove_id, children):
-        # prevent update if no clicks
-        if n_clicks == 0 and not any(n_clicks_remove):
-            raise dash.exceptions.PreventUpdate
+    elif ".clickData" in triggered["prop_id"]:
+        if triggered["value"]:
+            selected_point = triggered["value"]["points"][0]["pointIndex"]
 
-        if children is None:
-            children = []
+            plot_returns = [
+                get_scatter(df ,input_value[i], output_value[i], [selected_point], None)
+                for i in range(len(plot_selected_data))
+            ]
+            img_file = df["plot_file"].iloc[selected_point]
 
-        # use context to see if remove was pushed
-        context = dash.callback_context
-        triggered = context.triggered[0]
+            # update data tables
+            input_rep = [
+                {"inputs": ALL_INPUTS[i], "value": df[ALL_INPUTS[i]].iloc[selected_point]}
+                for i in range(len(ALL_INPUTS))
+            ]
+            output_rep = [
+                {"outputs": ALL_OUTPUTS[i], "value": df[ALL_OUTPUTS[i]].iloc[selected_point]}
+                for i in range(len(ALL_OUTPUTS))
+            ]
 
-        if "dynamic-remove" in triggered["prop_id"]:
-            prop_id = json.loads(triggered["prop_id"].replace(".n_clicks", ""))
-            prop_idx = prop_id["index"]
-            card_idx = CARD_INDICES.pop(prop_idx)
-            children.pop(card_idx)
-
-            # update card indices for all greater values
-            for item in CARD_INDICES.keys():
-                if CARD_INDICES[item] > card_idx:
-                    CARD_INDICES[item] -= 1
-
-        else:
-            card = build_card()
-            children.insert(-1, card)
-
-        return children
-
-
-def get_scatter(x_col, y_col, selectedpoints, color_by=None):
-    if color_by == "NONE":
-        color_by = None
-
-    fig = px.scatter(
-        DF,
-        x=x_col,
-        y=y_col,
-        hover_data=["_id"],
-        color=color_by,
-        color_continuous_scale="viridis",
-        labels={x_col: LABELS.get(x_col, x_col), y_col: LABELS.get(y_col, y_col)},
-        template=CONFIG["scatter"]["plotly-theme"],
-    )
-
-    if selectedpoints is not None:
-        selected_df = DF.iloc[selectedpoints]
-        selection_bounds = {
-            "x0": np.min(selected_df[x_col]),
-            "x1": np.max(selected_df[x_col]),
-            "y0": np.min(selected_df[y_col]),
-            "y1": np.max(selected_df[y_col]),
-        }
-        fig.add_shape(
-            dict(
-                {
-                    "type": "rect",
-                    "line": {"width": 1, "dash": "dot", "color": "darkgrey"},
-                },
-                **selection_bounds
-            )
-        )
+            return plot_returns, img_file, input_rep, output_rep
 
     else:
-        selectedpoints = []
+        pass
 
-    if not color_by:
-        fig.update_traces(
-            selectedpoints=selectedpoints,
-            mode="markers+text",
-            marker={"color": CONFIG["scatter"]["selected-marker-color"], "size": 15},
-            unselected={
-                "marker": {"color": CONFIG["scatter"]["marker-color"]},
-                "textfont": {"color": "rgba(0, 0, 0, 0)"},
-            },
-        )
+    return updated, dash.no_update, dash.no_update, dash.no_update
+
+@app.callback(
+    Output("dynamic-plots", "children"),
+    Input("submit-val", component_property="n_clicks"),
+    Input({"type": "dynamic-remove", "index": ALL}, component_property="n_clicks"),
+    State({"type": "dynamic-remove", "index": ALL}, "id"),
+    State("dynamic-plots", "children"),
+)
+def update_cards(n_clicks, n_clicks_remove, remove_id, children):
+    # prevent update if no clicks
+    if n_clicks == 0 and not any(n_clicks_remove):
+        raise dash.exceptions.PreventUpdate
+
+    if children is None:
+        children = []
+
+    df = dataframe()
+
+    # use context to see if remove was pushed
+    context = dash.callback_context
+    triggered = context.triggered[0]
+
+    if "dynamic-remove" in triggered["prop_id"]:
+        prop_id = json.loads(triggered["prop_id"].replace(".n_clicks", ""))
+        prop_idx = prop_id["index"]
+        card_idx = CARD_INDICES.pop(prop_idx)
+        children.pop(card_idx)
+
+        # update card indices for all greater values
+        for item in CARD_INDICES.keys():
+            if CARD_INDICES[item] > card_idx:
+                CARD_INDICES[item] -= 1
 
     else:
-        fig.update_traces(mode="markers+text", marker={"size": 15})
-        fig.update_coloraxes(colorbar_title_side="right")
+        card = build_card(df)
+        children.insert(-1, card)
 
-    fig.update_layout(
-        font_color="grey",
-        font_size=10,
-        margin={"l": 20, "r": 0, "b": 15, "t": 5},
-        dragmode="select",
-        hovermode="closest",
-    )
+    return children
 
-    return fig
 
 
 if __name__ == "__main__":
-    app = init_dashboard()
     app.run_server(debug=True)
