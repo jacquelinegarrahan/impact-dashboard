@@ -54,7 +54,7 @@ cache = Cache(app.server, config={
 })
 
 
-TIMEOUT=10
+TIMEOUT=100
 
 # required for building df
 def flatten_dict(d):
