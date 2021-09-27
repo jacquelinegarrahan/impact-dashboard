@@ -41,8 +41,8 @@ DF = pd.DataFrame()
 ALL_INPUTS = [DEFAULT_INPUT]
 ALL_OUTPUTS = [DEFAULT_OUTPUT]
 
-CARD_COUNT=0
-CARD_INDICES ={}
+CARD_COUNT = 0
+CARD_INDICES = {}
 LIVE_CARD_COUNT = 0
 
 
@@ -160,7 +160,7 @@ def build_card(x: str = None, y: str = None, selected_data: list = None):
 
     options = [
         {"label": input_item, "value": input_item}
-        for input_item in ALL_INPUTS+ ALL_OUTPUTS
+        for input_item in ALL_INPUTS + ALL_OUTPUTS
     ]
 
     # use default input/output when creating a card
@@ -169,69 +169,119 @@ def build_card(x: str = None, y: str = None, selected_data: list = None):
     if not y:
         y = DEFAULT_OUTPUT
 
-    card = dbc.Col(
-        dbc.Card(
-            dbc.CardBody(
-                [
-                    dbc.Row(
-                        html.Button("x", id={"type": "dynamic-remove", "index": CARD_COUNT,}, n_clicks=0, style={"height": 25}),
-                        style={"padding": 0},
-                        justify="end",
-                    ),
-                    html.Div(
-                        dcc.Dropdown(
-                            id={"type": "dynamic-input", "index": CARD_COUNT,},
-                            options=options,
-                            value=x,
-                            clearable=False,
+    card = dbc.Card(
+        dbc.CardBody(
+            [
+                dbc.Row(
+                    children=[
+                        dbc.Col(
+                            children=[
+                                html.Label(
+                                    ["X:"],
+                                    style={
+                                        "display": "block",
+                                        "text-align": "center",
+                                        "font-size": int(CONFIG["card"]["header-font-size"])
+                                    },
+                                ),
+                                html.Div(
+                                    dcc.Dropdown(
+                                        id={
+                                            "type": "dynamic-input",
+                                            "index": CARD_COUNT,
+                                        },
+                                        options=options,
+                                        value=x,
+                                        clearable=False,
+                                    ),
+                                    style={
+                                        "width": "100%",
+                                        "font-size": int(CONFIG["card"]["font-size"]),
+                                        "margins": 0,
+                                    },
+                                ),
+                            ],
+                            style={"margin-right": "2px", "margin-left": "2px"},
                         ),
-                        style={
-                            "width": "32%",
-                            "display": "inline-block",
-                            "font-size": CONFIG["card"]["font-size"],
-                        },
-                    ),
-                    html.Div(
-                        dcc.Dropdown(
-                            id={"type": "dynamic-output", "index": CARD_COUNT,},
-                            options=options,
-                            value=y,
-                            clearable=False,
+                        dbc.Col(
+                            children=[
+                                html.Label(
+                                    ["Y:"],
+                                    style={
+                                        "display": "block",
+                                        "text-align": "center",
+                                        "font-size": int(CONFIG["card"]["header-font-size"])
+                                    },
+                                ),
+                                html.Div(
+                                    dcc.Dropdown(
+                                        id={
+                                            "type": "dynamic-output",
+                                            "index": CARD_COUNT,
+                                        },
+                                        options=options,
+                                        value=y,
+                                        clearable=False,
+                                    ),
+                                    style={
+                                        "width": "100%",
+                                        "font-size": int(CONFIG["card"]["font-size"]),
+                                    },
+                                ),
+                            ],
+                            style={"margin-right": "2px", "margin-left": "2px"},
                         ),
-                        style={
-                            "width": "32%",
-                            "display": "inline-block",
-                            "font-size": CONFIG["card"]["font-size"],
-                        },
-                    ),
-                    html.Div(
-                        dcc.Dropdown(
-                            id={"type": "dynamic-coloring", "index": CARD_COUNT,},
-                            options=options,
-                            clearable=True,
+                        dbc.Col(
+                            children=[
+                                html.Label(
+                                    ["Color by:"],
+                                    style={
+                                        "display": "block",
+                                        "text-align": "center",
+                                        "font-size": int(CONFIG["card"]["header-font-size"])
+                                    },
+                                ),
+                                html.Div(
+                                    dcc.Dropdown(
+                                        id={
+                                            "type": "dynamic-coloring",
+                                            "index": CARD_COUNT,
+                                        },
+                                        options=options,
+                                        clearable=True,
+                                    ),
+                                    style={
+                                        "width": "100%",
+                                        "display": "inline-block",
+                                        "font-size": int(CONFIG["card"]["font-size"]),
+                                    },
+                                ),
+                            ],
+                            style={"margin-right": "2px", "margin-left": "2px"},
                         ),
-                        style={
-                            "width": "32%",
-                            "display": "inline-block",
-                            "font-size": CONFIG["card"]["font-size"],
-                        },
-                    ),
-                    html.Div(
-                        dcc.Graph(
-                            id={"type": "scatter-plot", "index": CARD_COUNT,},
-                            figure=get_scatter(x, y, selected_data),
-                            style={"height": CONFIG["card"]["plot-height"]},
-
+                        html.Button(
+                            "x",
+                            id={"type": "dynamic-remove", "index": CARD_COUNT,},
+                            n_clicks=0,
+                            style={"height": 25},
                         ),
-                        style={"width": "100%", "display": "inline-block"},
+                    ],
+                    no_gutters=True,
+                ),
+                html.Div(
+                    dcc.Graph(
+                        id={"type": "scatter-plot", "index": CARD_COUNT,},
+                        figure=get_scatter(x, y, selected_data),
+                        style={"height": CONFIG["card"]["plot-height"]},
                     ),
-                ]
-            )
+                    style={"width": "100%", "display": "inline-block"},
+                ),
+            ]
         ),
     )
     if CARD_INDICES.values():
         CARD_INDICES[CARD_COUNT] = max(CARD_INDICES.values()) + 1
-    else:  
+    else:
         CARD_INDICES[CARD_COUNT] = 0
     CARD_COUNT += 1
     return card
@@ -284,8 +334,8 @@ def build_df():
         except:
             pass
 
-    ALL_INPUTS=list(ALL_INPUTS)
-    ALL_OUTPUTS=list(ALL_OUTPUTS)
+    ALL_INPUTS = list(ALL_INPUTS)
+    ALL_OUTPUTS = list(ALL_OUTPUTS)
 
 
 def init_dashboard():
@@ -293,10 +343,10 @@ def init_dashboard():
     # pass our own flask server instead of using Dash's
     app = dash.Dash(
         external_stylesheets=[
-          #  "/static/dist/css/styles.css",
-          #  "https://fonts.googleapis.com/css?family=Lato",
-        #    dbc.themes.BOOTSTRAP,
-             dbc.themes.DARKLY
+            #  "/static/dist/css/styles.css",
+            #  "https://fonts.googleapis.com/css?family=Lato",
+            #    dbc.themes.BOOTSTRAP,
+            dbc.themes.DARKLY
         ],
         external_scripts=[
             "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML"
@@ -305,8 +355,14 @@ def init_dashboard():
 
     build_df()
 
-    input_rep = [{"inputs": ALL_INPUTS[i], "value": DF[ALL_INPUTS[i]].iloc[0]} for i in range(len(ALL_INPUTS))]
-    output_rep = [{"outputs": ALL_OUTPUTS[i], "value": DF[ALL_OUTPUTS[i]].iloc[0]} for i in range(len(ALL_OUTPUTS))]
+    input_rep = [
+        {"inputs": ALL_INPUTS[i], "value": DF[ALL_INPUTS[i]].iloc[0]}
+        for i in range(len(ALL_INPUTS))
+    ]
+    output_rep = [
+        {"outputs": ALL_OUTPUTS[i], "value": DF[ALL_OUTPUTS[i]].iloc[0]}
+        for i in range(len(ALL_OUTPUTS))
+    ]
 
     # Custom HTML layout
     app.index_string = html_layout
@@ -315,54 +371,73 @@ def init_dashboard():
     app.layout = html.Div(
         children=[
             dbc.Row(
-                children= [
+                children=[
                     html.Img(
                         id="dash-image",
                         src=DF["plot_file"].iloc[0],
-                        style={"width": CONFIG["dash"]["width"], "display": "inline-block"},
+                        style={"width": CONFIG["dash"]["width"]},
                     ),
-                    html.Div(
                     dash_table.DataTable(
                         id="input-table",
-                        columns=[{"name": "inputs", "id": "inputs"}, {"name": "value", "id": "value"}],
+                        columns=[
+                            {"name": "inputs", "id": "inputs"},
+                            {"name": "value", "id": "value"},
+                        ],
                         data=input_rep,
                         sort_action="native",
-                        #page_size=300,
-                        style_table={'overflowY': 'auto','overflowX': 'auto', 'width': CONFIG['tables']['width']},
-                        style_header={'backgroundColor': CONFIG["tables"]["header-background-color"]},
-                        style_cell={
-                            'backgroundColor': CONFIG['tables']['cell-background-color'],
-                            'color': CONFIG['tables']['text-color'],
-                            'fontSize': CONFIG['tables']['font-size'],
-                            'textAlign': 'left'
+                        # page_size=300,
+                        style_table={
+                            "overflowY": "auto",
+                            "overflowX": "auto",
+                            "width": CONFIG["tables"]["width"],
+                            "display": "inline-block",
                         },
-                        fixed_rows={'headers': True},
+                        style_header={
+                            "backgroundColor": CONFIG["tables"][
+                                "header-background-color"
+                            ]
+                        },
+                        style_cell={
+                            "backgroundColor": CONFIG["tables"][
+                                "cell-background-color"
+                            ],
+                            "color": CONFIG["tables"]["text-color"],
+                            "fontSize": int(CONFIG["tables"]["font-size"]),
+                            "textAlign": "left",
+                        },
+                        fixed_rows={"headers": True},
                     ),
-                    style={"display":"inline-block"}
-                    ),
-                    html.Div(
                     dash_table.DataTable(
                         id="output-table",
-                        columns=[{"name": "outputs", "id": "outputs"}, {"name": "value", "id": "value"}],
+                        columns=[
+                            {"name": "outputs", "id": "outputs"},
+                            {"name": "value", "id": "value"},
+                        ],
                         data=output_rep,
                         sort_action="native",
-                        #page_size=300,
-                        style_table={'overflowY': 'auto', 'overflowX': 'auto', 'width': CONFIG['tables']['width']},
-                        style_header={'backgroundColor': CONFIG["tables"]["header-background-color"]},
-                        style_cell={
-                            'backgroundColor': CONFIG['tables']['cell-background-color'],
-                            'color': CONFIG['tables']['text-color'],
-                            'fontSize': CONFIG['tables']['font-size']
+                        # page_size=300,
+                        style_table={
+                            "overflowY": "auto",
+                            "overflowX": "auto",
+                            "width": CONFIG["tables"]["width"],
                         },
-                        style_data={
-                                'whiteSpace': 'normal',
-                                'height': 'auto',
-                            },
-                        fixed_rows={'headers': True},
+                        style_header={
+                            "backgroundColor": CONFIG["tables"][
+                                "header-background-color"
+                            ]
+                        },
+                        style_cell={
+                            "backgroundColor": CONFIG["tables"][
+                                "cell-background-color"
+                            ],
+                            "color": CONFIG["tables"]["text-color"],
+                            "fontSize": int(CONFIG["tables"]["font-size"]),
+                            "textAlign": "left",
+                        },
+                        fixed_rows={"headers": True},
                     ),
-                    style={"display":"inline-block"}
-                    )
-                ]
+                ],
+                style={"height": "70vh"},
             ),
             dbc.Row(
                 className="row row-cols-4",
@@ -374,14 +449,11 @@ def init_dashboard():
                     build_card(x="QE01:b1_gradient", y="QE02:b1_gradient"),
                     build_card(x="QE03:b1_gradient", y="QE04:b1_gradient"),
                     html.Div(
-                        
-                        html.Button(
-                            "+", id='submit-val', n_clicks=0
-                        ),
-                        style={'padding': 10}
+                        html.Button("+", id="submit-val", n_clicks=0),
+                        style={"padding": 10},
                     ),
-                ]
-            )
+                ],
+            ),
         ],
     )
 
@@ -412,6 +484,8 @@ def init_callbacks(app):
     @app.callback(
         Output({"type": "scatter-plot", "index": ALL}, "figure"),
         Output("dash-image", "src"),
+        Output("input-table", "data"),
+        Output("output-table", "data"),
         Input({"type": "dynamic-input", "index": ALL}, "value"),
         Input({"type": "dynamic-output", "index": ALL}, "value"),
         Input({"type": "scatter-plot", "index": ALL}, "selectedData"),
@@ -440,7 +514,7 @@ def init_callbacks(app):
                         )
                         for i in range(len(plot_selected_data))
                     ],
-                    dash.no_update,
+                    dash.no_update, dash.no_update, dash.no_update
                 )
 
             else:
@@ -449,7 +523,7 @@ def init_callbacks(app):
                         get_scatter(input_value[i], output_value[i], None, color_by[i])
                         for i in range(len(plot_selected_data))
                     ],
-                    dash.no_update,
+                    dash.no_update, dash.no_update, dash.no_update
                 )
 
         # update input/output values
@@ -472,7 +546,7 @@ def init_callbacks(app):
                 selected_points,
                 color_by[CARD_INDICES[prop_idx]],
             )
-            return updated, dash.no_update
+            return updated, dash.no_update, dash.no_update, dash.no_update
 
         elif ".clickData" in triggered["prop_id"]:
             if triggered["value"]:
@@ -483,18 +557,29 @@ def init_callbacks(app):
                     for i in range(len(plot_selected_data))
                 ]
                 img_file = DF["plot_file"].iloc[selected_point]
-                return plot_returns, img_file
+
+                # update data tables
+                input_rep = [
+                    {"inputs": ALL_INPUTS[i], "value": DF[ALL_INPUTS[i]].iloc[selected_point]}
+                    for i in range(len(ALL_INPUTS))
+                ]
+                output_rep = [
+                    {"outputs": ALL_OUTPUTS[i], "value": DF[ALL_OUTPUTS[i]].iloc[selected_point]}
+                    for i in range(len(ALL_OUTPUTS))
+                ]
+
+                return plot_returns, img_file, input_rep, output_rep
 
         else:
             pass
 
-        return updated, dash.no_update
+        return updated, dash.no_update, dash.no_update, dash.no_update
 
     @app.callback(
         Output("dynamic-plots", "children"),
         Input("submit-val", component_property="n_clicks"),
         Input({"type": "dynamic-remove", "index": ALL}, component_property="n_clicks"),
-        State({'type': 'dynamic-remove', 'index': ALL}, 'id'),
+        State({"type": "dynamic-remove", "index": ALL}, "id"),
         State("dynamic-plots", "children"),
     )
     def update_cards(n_clicks, n_clicks_remove, remove_id, children):
@@ -527,7 +612,6 @@ def init_callbacks(app):
         return children
 
 
-
 def get_scatter(x_col, y_col, selectedpoints, color_by=None):
     if color_by == "NONE":
         color_by = None
@@ -540,7 +624,7 @@ def get_scatter(x_col, y_col, selectedpoints, color_by=None):
         color=color_by,
         color_continuous_scale="viridis",
         labels={x_col: LABELS.get(x_col, x_col), y_col: LABELS.get(y_col, y_col)},
-        template=CONFIG["scatter"]["plotly-theme"]
+        template=CONFIG["scatter"]["plotly-theme"],
     )
 
     if selectedpoints is not None:
@@ -584,7 +668,7 @@ def get_scatter(x_col, y_col, selectedpoints, color_by=None):
         font_size=10,
         margin={"l": 20, "r": 0, "b": 15, "t": 5},
         dragmode="select",
-        hovermode="closest"
+        hovermode="closest",
     )
 
     return fig
