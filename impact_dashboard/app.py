@@ -547,6 +547,47 @@ def init_dashboard():
                     ),
                 ],
             ),
+            html.Div(
+                dcc.Dropdown(
+                    id="explore-dropdown",
+                    options=[{"label": i, "value": i} for i in df.columns],
+                    value=df.columns,
+                    clearable=False,
+                    multi=True
+                ),
+                style={
+                    "width": "100%",
+                    "font-size": 20,
+                    "margins": 0,
+                },
+            ),
+
+            dash_table.DataTable(
+                id="explore-table",
+                columns=[{"name": i, "id": i} for i in df.columns],
+                data=df.to_dict('records'),
+                sort_action="native",
+                style_table={
+                    "overflowY": "auto",
+                    "overflowX": "auto",
+                    "width": "100vw",
+                    "display": "inline-block",
+                },
+                style_header={
+                    "backgroundColor": CONFIG["tables"][
+                        "header-background-color"
+                    ]
+                },
+                style_cell={
+                    "backgroundColor": CONFIG["tables"][
+                        "cell-background-color"
+                    ],
+                    "color": CONFIG["tables"]["text-color"],
+                    "fontSize": int(CONFIG["tables"]["font-size"]),
+                    "textAlign": "left",
+                },
+                fixed_rows={"headers": True},
+            ),
         ],
     )
 
@@ -687,6 +728,26 @@ def update_cards(n_clicks, n_clicks_remove, remove_id, children):
         children.insert(-1, card)
 
     return children
+
+@app.callback(
+    Output('explore-table', 'data'),
+    Output('explore-table', 'columns'),
+    Input("explore-dropdown", "value"),
+)
+def update_explore_table(selected_values):
+    df = dataframe()
+    df = df[selected_values]
+    columns=[{"name": i, "id": i} for i in df.columns]
+    data=df.to_dict('records')
+
+    print(columns)
+    print(data)
+
+    return data, columns
+
+
+
+    
 
 
 
