@@ -1,0 +1,15 @@
+name: impact-dashboard
+dependencies:
+  - python=3.9
+  - pymongo
+  - python-dateutil
+  - paramiko
+  - scp
+  - flask
+  - plotly
+  - pandas
+  - flask-assets
+  - pip 
+  pip:
+    - dash
+    - dash_bootstrap_components
