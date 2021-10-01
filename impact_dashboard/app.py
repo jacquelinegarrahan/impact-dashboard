@@ -4,9 +4,11 @@ import dash_core_components as dcc
 import dash_bootstrap_components as dbc
 import dash_html_components as html
 import dash_table
+from dash_table.Format import Format, Scheme
 from flask_caching import Cache
 import numpy as np
 import json
+import math
 import pandas as pd
 import plotly.express as px
 from pymongo import MongoClient
@@ -14,6 +16,8 @@ from dash.dependencies import Input, Output, ClientsideFunction, State, MATCH, A
 import os
 from impact_dashboard.layout import html_layout
 from impact_dashboard import CONFIG
+
+N_SIG_FIGS = 6
 
 MONGO_HOST = os.environ["MONGO_HOST"]
 MONGO_PORT = int(os.environ["MONGO_PORT"])
@@ -54,7 +58,7 @@ cache = Cache(app.server, config={
 })
 
 
-TIMEOUT=100
+TIMEOUT=10
 
 # required for building df
 def flatten_dict(d):
@@ -76,13 +80,13 @@ DB = CLIENT.impact
 results = DB.results
 results = list(results.find())
 
-flattened = [flatten_dict(res) for res in results]
-DF = pd.DataFrame(flattened)
+#flattened = [flatten_dict(res) for res in results]
+#DF = pd.DataFrame(flattened)
 
 # Load DataFrame
-DF["date"] = pd.to_datetime(DF["isotime"])
-DF["_id"] = DF["_id"].astype(str)
-DF = DF.sort_values(by="date")
+#DF["date"] = pd.to_datetime(DF["isotime"])
+#DF["_id"] = DF["_id"].astype(str)
+#DF = DF.sort_values(by="date")
 
 ALL_INPUTS = ["date"]
 ALL_OUTPUTS = []
@@ -107,13 +111,11 @@ for rem_input in EXCLUDE_INPUTS:
 ALL_INPUTS = list(ALL_INPUTS)
 ALL_OUTPUTS = list(ALL_OUTPUTS)
 
-
-
-
 CARD_COUNT = 0
 CARD_INDICES = {}
 LIVE_CARD_COUNT = 0
 
+TABLE_DEFAULTS = ["date", "SOL1:solenoid_field_scale", 'CQ01:b1_gradient', 'SQ01:b1_gradient',  "end_norm_emit_y", "QA01:b1_gradient", "QA02:b1_gradient", "QE01:b1_gradient", "QE02:b1_gradient", "QE03:b1_gradient", "QE04:b1_gradient", "archive"]
 
 LABELS = {
     #   '_id',
@@ -430,13 +432,13 @@ def get_df():
     results = list(results.find())
 
     flattened = [flatten_dict(res) for res in results]
-
     df = pd.DataFrame(flattened)
 
     # Load DataFrame
     df["date"] = pd.to_datetime(df["isotime"])
     df["_id"] = df["_id"].astype(str)
     df = df.sort_values(by="date")
+
     return df.to_json(date_format='iso', orient='split')
     
 def dataframe():
@@ -457,6 +459,8 @@ def init_dashboard():
         for i in range(len(ALL_OUTPUTS))
     ]
 
+    explore_table_cols =  [{"name": i, "id": i, "type": "numeric", "format":Format(precision=2, scheme=Scheme.decimal)} if df.dtypes[i] in ["int", "float64"] else {"name": i, "id": i} for i in df[TABLE_DEFAULTS].columns]
+
     # Custom HTML layout
     app.index_string = html_layout
 
@@ -474,7 +478,7 @@ def init_dashboard():
                         id="input-table",
                         columns=[
                             {"name": "inputs", "id": "inputs"},
-                            {"name": "value", "id": "value"},
+                            {"name": "value", "id": "value", "format":Format(precision=2)},
                         ],
                         data=input_rep,
                         sort_action="native",
@@ -550,8 +554,8 @@ def init_dashboard():
             html.Div(
                 dcc.Dropdown(
                     id="explore-dropdown",
-                    options=[{"label": i, "value": i} for i in df.columns],
-                    value=df.columns,
+                    options=[{"label": i, "value": i} for i in df.columns] + [{"label": "Reset", "value": "Reset"}],
+                    value=TABLE_DEFAULTS,
                     clearable=False,
                     multi=True
                 ),
@@ -561,17 +565,17 @@ def init_dashboard():
                     "margins": 0,
                 },
             ),
-
             dash_table.DataTable(
                 id="explore-table",
-                columns=[{"name": i, "id": i} for i in df.columns],
-                data=df.to_dict('records'),
+                columns=explore_table_cols,
+                data=df[TABLE_DEFAULTS].to_dict('records'),
                 sort_action="native",
                 style_table={
                     "overflowY": "auto",
-                    "overflowX": "auto",
+                #    "overflowX": "auto",
                     "width": "100vw",
                     "display": "inline-block",
+                #    "autoWidth": "true",
                 },
                 style_header={
                     "backgroundColor": CONFIG["tables"][
@@ -585,6 +589,9 @@ def init_dashboard():
                     "color": CONFIG["tables"]["text-color"],
                     "fontSize": int(CONFIG["tables"]["font-size"]),
                     "textAlign": "left",
+                    'minWidth': '180px', 'width': '180px', 'maxWidth': '180px',
+                    'overflow': 'hidden',
+                    'textOverflow': 'ellipsis',
                 },
                 fixed_rows={"headers": True},
             ),
@@ -732,23 +739,24 @@ def update_cards(n_clicks, n_clicks_remove, remove_id, children):
 @app.callback(
     Output('explore-table', 'data'),
     Output('explore-table', 'columns'),
+    Output('explore-dropdown', 'value'),
     Input("explore-dropdown", "value"),
 )
 def update_explore_table(selected_values):
     df = dataframe()
-    df = df[selected_values]
-    columns=[{"name": i, "id": i} for i in df.columns]
+
+    if "Reset" in selected_values:
+        df = df[TABLE_DEFAULTS]
+        selection = TABLE_DEFAULTS
+
+    else:
+        df = df[selected_values]
+        selection = selected_values
+
+    columns =  [{"name": i, "id": i, "type": "numeric", "format":Format(precision=N_SIG_FIGS, scheme=Scheme.decimal)} if df.dtypes[i] in ["int", "float64"] else {"name": i, "id": i} for i in df.columns]
     data=df.to_dict('records')
 
-    print(columns)
-    print(data)
-
-    return data, columns
-
-
-
-    
-
+    return data, columns, selection
 
 
 if __name__ == "__main__":
