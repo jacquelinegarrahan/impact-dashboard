@@ -465,11 +465,16 @@ def init_dashboard():
     df = dataframe()
 
     input_rep = [
+        {"inputs": LABELS.get(ALL_INPUTS[i], ALL_INPUTS[i]), "value": format(df[DROPDOWN_INPUTS[i]].iloc[0], f".{N_SIG_FIGS}g")}
+        if isinstance(df[DROPDOWN_INPUTS[i]].iloc[0], float) else 
         {"inputs": LABELS.get(ALL_INPUTS[i], ALL_INPUTS[i]), "value": df[DROPDOWN_INPUTS[i]].iloc[0]}
         for i in range(len(DROPDOWN_INPUTS))
     ]
+
     output_rep = [
-        {"outputs": LABELS.get(DROPDOWN_OUTPUTS[i], DROPDOWN_OUTPUTS[i]), "value": df[DROPDOWN_OUTPUTS[i]].iloc[0]}
+        {"outputs": LABELS.get(ALL_OUTPUTS[i], ALL_OUTPUTS[i]), "value": format(df[DROPDOWN_OUTPUTS[i]].iloc[0], f".{N_SIG_FIGS}g")}
+        if isinstance(df[DROPDOWN_OUTPUTS[i]].iloc[0], float) else 
+        {"outputs": LABELS.get(ALL_OUTPUTS[i], ALL_OUTPUTS[i]), "value": df[DROPDOWN_OUTPUTS[i]].iloc[0]}
         for i in range(len(DROPDOWN_OUTPUTS))
     ]
 
@@ -491,7 +496,7 @@ def init_dashboard():
                         id="input-table",
                         columns=[
                             {"name": "inputs", "id": "inputs"},
-                            {"name": "value", "id": "value", "format":Format(precision=2)},
+                            {"name": "value", "id": "value"},
                         ],
                         data=input_rep,
                         sort_action="native",
