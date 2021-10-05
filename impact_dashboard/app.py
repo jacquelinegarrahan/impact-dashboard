@@ -14,8 +14,10 @@ import plotly.express as px
 from pymongo import MongoClient
 from dash.dependencies import Input, Output, ClientsideFunction, State, MATCH, ALL
 import os
+import copy
 from impact_dashboard.layout import html_layout
 from impact_dashboard import CONFIG
+import dash_defer_js_import as dji
 
 N_SIG_FIGS = 6
 
@@ -25,7 +27,8 @@ MONGO_PORT = int(os.environ["MONGO_PORT"])
 
 DEFAULT_INPUT = "distgen:n_particle"
 DEFAULT_OUTPUT = "end_sigma_x"
-EXCLUDE_INPUTS = [
+# To exclude from all rep inputs
+EXCLUDE_ALL_INPUTS = [
     "mpi_run",
     "header:Nprow",
     "header:Npcol",
@@ -37,18 +40,22 @@ EXCLUDE_INPUTS = [
     "change_timestep_1:dt",
     "timeout",
     "distgen:xy_dist:file",
+    "stop"
 ]
-EXCLUDE_OUTPUTS = ["plot_file", "fingerprint", "archive", "isotime"]
+# To exclude from all outputs
+EXCLUDE_ALL_OUTPUTS = ["plot_file", "fingerprint", "isotime"]
+EXCLUDE_PLOT_INPUTS = []
+EXCLUDE_PLOT_OUTPUTS = ["plot_file", "fingerprint", "archive", "isotime"]
+
+latex_refresh_script = dji.Import(src="./assets/mathjax_test.js")
+mathjax_script = dji.Import(src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_SVG")
 
 app = dash.Dash(
     external_stylesheets=[
-        #  "/static/dist/css/styles.css",
-        #  "https://fonts.googleapis.com/css?family=Lato",
-        #    dbc.themes.BOOTSTRAP,
         dbc.themes.DARKLY
     ],
     external_scripts=[
-        "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML"
+        "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_SVG",
     ],
 )
 
@@ -80,36 +87,41 @@ DB = CLIENT.impact
 results = DB.results
 results = list(results.find())
 
-#flattened = [flatten_dict(res) for res in results]
-#DF = pd.DataFrame(flattened)
-
-# Load DataFrame
-#DF["date"] = pd.to_datetime(DF["isotime"])
-#DF["_id"] = DF["_id"].astype(str)
-#DF = DF.sort_values(by="date")
-
 ALL_INPUTS = ["date"]
 ALL_OUTPUTS = []
 for res in results:
     ALL_INPUTS += list(res["inputs"].keys())
     ALL_OUTPUTS += list(res["outputs"].keys())
-ALL_INPUTS = set(ALL_INPUTS)
-ALL_OUTPUTS = set(ALL_OUTPUTS)
 
-# drop all unused outputs
-for rem_output in EXCLUDE_OUTPUTS:
+ALL_INPUTS = list(set(ALL_INPUTS))
+ALL_OUTPUTS = list(set(ALL_OUTPUTS))
+
+# drop all exclusions
+for rem_output in EXCLUDE_ALL_OUTPUTS:
     try:
-        ALL_OUTPUTS.remove(rem_output)
+        DROPDOWN_OUTPUTS.remove(rem_output)
     except:
         pass
-for rem_input in EXCLUDE_INPUTS:
+for rem_input in EXCLUDE_ALL_INPUTS:
     try:
-        ALL_INPUTS.remove(rem_input)
+        DROPDOWN_INPUTS.remove(rem_input)
     except:
         pass
 
-ALL_INPUTS = list(ALL_INPUTS)
-ALL_OUTPUTS = list(ALL_OUTPUTS)
+DROPDOWN_INPUTS = copy.copy(ALL_INPUTS)
+DROPDOWN_OUTPUTS = copy.copy(ALL_OUTPUTS)
+
+# drop all plot exclusions
+for rem_output in EXCLUDE_PLOT_OUTPUTS:
+    try:
+        DROPDOWN_OUTPUTS.remove(rem_output)
+    except:
+        pass
+for rem_input in EXCLUDE_PLOT_INPUTS:
+    try:
+        DROPDOWN_INPUTS.remove(rem_input)
+    except:
+        pass
 
 CARD_COUNT = 0
 CARD_INDICES = {}
@@ -194,9 +206,9 @@ LABELS = {
     #   'end_moment3_px',
     #   'end_moment3_py',
     #   'end_moment3_pz',
-    "end_max_amplitude_px": "$end max amplitude p_x$",
-    "end_max_amplitude_py": "$end max amplitude p_y$",
-    "end_max_amplitude_pz": "$end max amplitude p_z$",
+    "end_max_amplitude_px": r"$$end \: max(\abs{p_x})$$",
+    "end_max_amplitude_py": r"$$end \: max(\abs{p_y})$$",
+    "end_max_amplitude_pz": r"$$end \: max(\abs{p_z})$$",
     #   'end_mean_px',
     #   'end_sigma_px',
     #   'end_cov_x__px',
@@ -231,8 +243,8 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
     global CARD_COUNT
 
     options = [
-        {"label": input_item, "value": input_item}
-        for input_item in ALL_INPUTS + ALL_OUTPUTS
+        {"label": LABELS.get(item, item), "value": item}
+        for item in ALL_INPUTS + ALL_OUTPUTS
     ]
 
     # use default input/output when creating a card
@@ -252,8 +264,8 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
                                     ["X:"],
                                     style={
                                         "display": "block",
-                                        "text-align": "center",
-                                        "font-size": int(CONFIG["card"]["header-font-size"])
+                                        "textAlign": "center",
+                                        "fontSize": int(CONFIG["card"]["header-font-size"])
                                     },
                                 ),
                                 html.Div(
@@ -268,12 +280,12 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
                                     ),
                                     style={
                                         "width": "100%",
-                                        "font-size": int(CONFIG["card"]["font-size"]),
+                                        "fontSize": int(CONFIG["card"]["font-size"]),
                                         "margins": 0,
                                     },
                                 ),
                             ],
-                            style={"margin-right": "2px", "margin-left": "2px"},
+                            style={"marginRight": "2px", "marginLeft": "2px"},
                         ),
                         dbc.Col(
                             children=[
@@ -281,8 +293,8 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
                                     ["Y:"],
                                     style={
                                         "display": "block",
-                                        "text-align": "center",
-                                        "font-size": int(CONFIG["card"]["header-font-size"])
+                                        "textAlign": "center",
+                                        "fontSize": int(CONFIG["card"]["header-font-size"])
                                     },
                                 ),
                                 html.Div(
@@ -297,11 +309,11 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
                                     ),
                                     style={
                                         "width": "100%",
-                                        "font-size": int(CONFIG["card"]["font-size"]),
+                                        "fontSize": int(CONFIG["card"]["font-size"]),
                                     },
                                 ),
                             ],
-                            style={"margin-right": "2px", "margin-left": "2px"},
+                            style={"marginRight": "2px", "marginLeft": "2px"},
                         ),
                         dbc.Col(
                             children=[
@@ -309,8 +321,8 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
                                     ["Color by:"],
                                     style={
                                         "display": "block",
-                                        "text-align": "center",
-                                        "font-size": int(CONFIG["card"]["header-font-size"])
+                                        "textAlign": "center",
+                                        "fontSize": int(CONFIG["card"]["header-font-size"])
                                     },
                                 ),
                                 html.Div(
@@ -325,11 +337,11 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
                                     style={
                                         "width": "100%",
                                         "display": "inline-block",
-                                        "font-size": int(CONFIG["card"]["font-size"]),
+                                        "fontSize": int(CONFIG["card"]["font-size"]),
                                     },
                                 ),
                             ],
-                            style={"margin-right": "2px", "margin-left": "2px"},
+                            style={"marginRight": "2px", "marginLeft": "2px"},
                         ),
                         html.Button(
                             "x",
@@ -420,6 +432,8 @@ def get_scatter(df, x_col, y_col, selectedpoints, color_by=None):
         hovermode="closest",
     )
 
+    #fig.update_xaxes(title_text=r"$$x (Å)$$")
+
     return fig
 
 
@@ -444,19 +458,19 @@ def get_df():
 def dataframe():
     return pd.read_json(get_df(), orient='split')
 
+
 def init_dashboard():
     """Create a Plotly Dash dashboard."""
-    # pass our own flask server instead of using Dash's
 
     df = dataframe()
 
     input_rep = [
-        {"inputs": ALL_INPUTS[i], "value": df[ALL_INPUTS[i]].iloc[0]}
-        for i in range(len(ALL_INPUTS))
+        {"inputs": LABELS.get(ALL_INPUTS[i], ALL_INPUTS[i]), "value": df[DROPDOWN_INPUTS[i]].iloc[0]}
+        for i in range(len(DROPDOWN_INPUTS))
     ]
     output_rep = [
-        {"outputs": ALL_OUTPUTS[i], "value": df[ALL_OUTPUTS[i]].iloc[0]}
-        for i in range(len(ALL_OUTPUTS))
+        {"outputs": LABELS.get(DROPDOWN_OUTPUTS[i], DROPDOWN_OUTPUTS[i]), "value": df[DROPDOWN_OUTPUTS[i]].iloc[0]}
+        for i in range(len(DROPDOWN_OUTPUTS))
     ]
 
     explore_table_cols =  [{"name": i, "id": i, "type": "numeric", "format":Format(precision=2, scheme=Scheme.decimal)} if df.dtypes[i] in ["int", "float64"] else {"name": i, "id": i} for i in df[TABLE_DEFAULTS].columns]
@@ -465,8 +479,7 @@ def init_dashboard():
     app.index_string = html_layout
 
     # Create Layout
-    app.layout = html.Div(
-        children=[
+    app.layout = html.Div([
             dbc.Row(
                 children=[
                     html.Img(
@@ -561,7 +574,7 @@ def init_dashboard():
                 ),
                 style={
                     "width": "100%",
-                    "font-size": 20,
+                    "fontSize": 20,
                     "margins": 0,
                 },
             ),
@@ -595,11 +608,15 @@ def init_dashboard():
                 },
                 fixed_rows={"headers": True},
             ),
-        ],
+        ###### important for latex ######
+        latex_refresh_script,
+        mathjax_script,
+        ]
     )
 
 # initialize dashboard
 init_dashboard()
+
 
 @app.callback(
     Output({"type": "scatter-plot", "index": ALL}, "figure"),
@@ -645,7 +662,7 @@ def update_plot(
                     get_scatter(df, input_value[i], output_value[i], None, color_by[i])
                     for i in range(len(plot_selected_data))
                 ],
-                dash.no_update, dash.no_update, dash.no_update
+                dash.no_update, dash.no_update, dash.no_update,
             )
 
     # update input/output values
@@ -683,11 +700,11 @@ def update_plot(
 
             # update data tables
             input_rep = [
-                {"inputs": ALL_INPUTS[i], "value": df[ALL_INPUTS[i]].iloc[selected_point]}
+                {"inputs": LABELS.get(ALL_INPUTS[i], ALL_INPUTS[i]), "value": df[ALL_INPUTS[i]].iloc[selected_point]}
                 for i in range(len(ALL_INPUTS))
             ]
             output_rep = [
-                {"outputs": ALL_OUTPUTS[i], "value": df[ALL_OUTPUTS[i]].iloc[selected_point]}
+                {"outputs": LABELS.get(ALL_OUTPUTS[i], ALL_OUTPUTS[i]), "value": df[ALL_OUTPUTS[i]].iloc[selected_point]}
                 for i in range(len(ALL_OUTPUTS))
             ]
 
@@ -757,6 +774,7 @@ def update_explore_table(selected_values):
     data=df.to_dict('records')
 
     return data, columns, selection
+
 
 
 if __name__ == "__main__":
