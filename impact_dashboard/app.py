@@ -41,7 +41,7 @@ EXCLUDE_ALL_INPUTS = [
     "change_timestep_1:dt",
     "timeout",
     "distgen:xy_dist:file",
-    "stop"
+    "stop",
 ]
 # To exclude from all outputs
 EXCLUDE_ALL_OUTPUTS = ["plot_file", "fingerprint", "isotime"]
@@ -49,24 +49,23 @@ EXCLUDE_PLOT_INPUTS = []
 EXCLUDE_PLOT_OUTPUTS = ["plot_file", "fingerprint", "archive", "isotime"]
 
 latex_refresh_script = dji.Import(src="./assets/mathjax_test.js")
-mathjax_script = dji.Import(src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_SVG")
+mathjax_script = dji.Import(
+    src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_SVG"
+)
 
 app = dash.Dash(
-    external_stylesheets=[
-        dbc.themes.DARKLY
-    ],
+    external_stylesheets=[dbc.themes.DARKLY],
     external_scripts=[
         "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_SVG",
     ],
 )
 
-cache = Cache(app.server, config={
-    'CACHE_TYPE': 'filesystem',
-    'CACHE_DIR': 'cache-directory'
-})
+cache = Cache(
+    app.server, config={"CACHE_TYPE": "filesystem", "CACHE_DIR": "cache-directory"}
+)
 
 
-TIMEOUT=10
+TIMEOUT = 10
 
 # required for building df
 def flatten_dict(d):
@@ -128,7 +127,21 @@ CARD_COUNT = 0
 CARD_INDICES = {}
 LIVE_CARD_COUNT = 0
 
-TABLE_DEFAULTS = ["date", "SOL1:solenoid_field_scale", 'SQ01:b1_gradient', 'CQ01:b1_gradient', "QA01:b1_gradient", "QA02:b1_gradient", "QE01:b1_gradient", "QE02:b1_gradient", "QE03:b1_gradient", "QE04:b1_gradient", 'end_norm_emit_x',"end_norm_emit_y",'end_norm_emit_z']
+TABLE_DEFAULTS = [
+    "date",
+    "SOL1:solenoid_field_scale",
+    "SQ01:b1_gradient",
+    "CQ01:b1_gradient",
+    "QA01:b1_gradient",
+    "QA02:b1_gradient",
+    "QE01:b1_gradient",
+    "QE02:b1_gradient",
+    "QE03:b1_gradient",
+    "QE04:b1_gradient",
+    "end_norm_emit_x",
+    "end_norm_emit_y",
+    "end_norm_emit_z",
+]
 LABELS = {
     #   '_id',
     #   'isotime',
@@ -228,7 +241,6 @@ LABELS = {
 }
 
 
-
 def build_card(df, x: str = None, y: str = None, selected_data: list = None):
     """ Representations of plot cards used for displaying data
 
@@ -243,8 +255,7 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
     global CARD_COUNT
 
     options = [
-        {"label": texlabel(item), "value": item}
-        for item in ALL_INPUTS + ALL_OUTPUTS
+        {"label": texlabel(item), "value": item} for item in ALL_INPUTS + ALL_OUTPUTS
     ]
 
     # use default input/output when creating a card
@@ -265,7 +276,9 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
                                     style={
                                         "display": "block",
                                         "textAlign": "center",
-                                        "fontSize": int(CONFIG["card"]["header-font-size"])
+                                        "fontSize": int(
+                                            CONFIG["card"]["header-font-size"]
+                                        ),
                                     },
                                 ),
                                 html.Div(
@@ -294,7 +307,9 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
                                     style={
                                         "display": "block",
                                         "textAlign": "center",
-                                        "fontSize": int(CONFIG["card"]["header-font-size"])
+                                        "fontSize": int(
+                                            CONFIG["card"]["header-font-size"]
+                                        ),
                                     },
                                 ),
                                 html.Div(
@@ -322,7 +337,9 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
                                     style={
                                         "display": "block",
                                         "textAlign": "center",
-                                        "fontSize": int(CONFIG["card"]["header-font-size"])
+                                        "fontSize": int(
+                                            CONFIG["card"]["header-font-size"]
+                                        ),
                                     },
                                 ),
                                 html.Div(
@@ -371,8 +388,6 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
     return card
 
 
-
-
 def get_scatter(df, x_col, y_col, selectedpoints, color_by=None):
     if color_by == "NONE":
         color_by = None
@@ -402,7 +417,7 @@ def get_scatter(df, x_col, y_col, selectedpoints, color_by=None):
                     "type": "rect",
                     "line": {"width": 1, "dash": "dot", "color": "darkgrey"},
                 },
-                **selection_bounds
+                **selection_bounds,
             )
         )
 
@@ -432,7 +447,7 @@ def get_scatter(df, x_col, y_col, selectedpoints, color_by=None):
         hovermode="closest",
     )
 
-    #fig.update_xaxes(title_text=r"$$x (Å)$$")
+    # fig.update_xaxes(title_text=r"$$x (Å)$$")
 
     return fig
 
@@ -453,10 +468,11 @@ def get_df():
     df["_id"] = df["_id"].astype(str)
     df = df.sort_values(by="date")
 
-    return df.to_json(date_format='iso', orient='split')
-    
+    return df.to_json(date_format="iso", orient="split")
+
+
 def dataframe():
-    return pd.read_json(get_df(), orient='split')
+    return pd.read_json(get_df(), orient="split")
 
 
 def init_dashboard():
@@ -465,26 +481,49 @@ def init_dashboard():
     df = dataframe()
 
     input_rep = [
-        {"inputs": texlabel(ALL_INPUTS[i]), "value": format(df[DROPDOWN_INPUTS[i]].iloc[0], f".{N_SIG_FIGS}g")}
-        if isinstance(df[DROPDOWN_INPUTS[i]].iloc[0], float) else 
-        {"inputs": texlabel(ALL_INPUTS[i]), "value": df[DROPDOWN_INPUTS[i]].iloc[0]}
+        {
+            "inputs": texlabel(ALL_INPUTS[i]),
+            "value": format(df[DROPDOWN_INPUTS[i]].iloc[0], f".{N_SIG_FIGS}g"),
+        }
+        if isinstance(df[DROPDOWN_INPUTS[i]].iloc[0], float)
+        else {
+            "inputs": texlabel(ALL_INPUTS[i]),
+            "value": df[DROPDOWN_INPUTS[i]].iloc[0],
+        }
         for i in range(len(DROPDOWN_INPUTS))
     ]
 
     output_rep = [
-        {"outputs": texlabel(ALL_OUTPUTS[i]), "value": format(df[DROPDOWN_OUTPUTS[i]].iloc[0], f".{N_SIG_FIGS}g")}
-        if isinstance(df[DROPDOWN_OUTPUTS[i]].iloc[0], float) else 
-        {"outputs": texlabel(ALL_OUTPUTS[i]), "value": df[DROPDOWN_OUTPUTS[i]].iloc[0]}
+        {
+            "outputs": texlabel(ALL_OUTPUTS[i]),
+            "value": format(df[DROPDOWN_OUTPUTS[i]].iloc[0], f".{N_SIG_FIGS}g"),
+        }
+        if isinstance(df[DROPDOWN_OUTPUTS[i]].iloc[0], float)
+        else {
+            "outputs": texlabel(ALL_OUTPUTS[i]),
+            "value": df[DROPDOWN_OUTPUTS[i]].iloc[0],
+        }
         for i in range(len(DROPDOWN_OUTPUTS))
     ]
 
-    explore_table_cols =  [{"name": i, "id": i, "type": "numeric", "format":Format(precision=2, scheme=Scheme.decimal)} if df.dtypes[i] in ["int", "float64"] else {"name": i, "id": i} for i in df[TABLE_DEFAULTS].columns]
+    explore_table_cols = [
+        {
+            "name": i,
+            "id": i,
+            "type": "numeric",
+            "format": Format(precision=2, scheme=Scheme.decimal),
+        }
+        if df.dtypes[i] in ["int", "float64"]
+        else {"name": i, "id": i}
+        for i in df[TABLE_DEFAULTS].columns
+    ]
 
     # Custom HTML layout
     app.index_string = html_layout
 
     # Create Layout
-    app.layout = html.Div([
+    app.layout = html.Div(
+        [
             dbc.Row(
                 children=[
                     html.Img(
@@ -502,12 +541,12 @@ def init_dashboard():
                         sort_action="native",
                         # page_size=300,
                         style_table={
-                         #   "overflowY": "auto",
+                            #   "overflowY": "auto",
                             "overflowX": "auto",
-                            'height': "70vh",
+                            "height": "70vh",
                             "width": CONFIG["tables"]["width"],
                             "display": "inline-block",
-                            "maxHeight": "70vh"
+                            "maxHeight": "70vh",
                         },
                         style_header={
                             "backgroundColor": CONFIG["tables"][
@@ -537,8 +576,8 @@ def init_dashboard():
                             "overflowY": "auto",
                             "overflowX": "auto",
                             "width": CONFIG["tables"]["width"],
-                            'height': "70vh",
-                            "maxHeight": "70vh"
+                            "height": "70vh",
+                            "maxHeight": "70vh",
                         },
                         style_header={
                             "backgroundColor": CONFIG["tables"][
@@ -576,52 +615,48 @@ def init_dashboard():
             html.Div(
                 dcc.Dropdown(
                     id="explore-dropdown",
-                    options=[{"label": i, "value": i} for i in df.columns] + [{"label": "Reset", "value": "Reset"}],
+                    options=[{"label": i, "value": i} for i in df.columns]
+                    + [{"label": "Reset", "value": "Reset"}],
                     value=TABLE_DEFAULTS,
                     clearable=False,
-                    multi=True
+                    multi=True,
                 ),
-                style={
-                    "width": "100%",
-                    "fontSize": 20,
-                    "margins": 0,
-                },
+                style={"width": "100%", "fontSize": 20, "margins": 0,},
             ),
             dash_table.DataTable(
                 id="explore-table",
                 columns=explore_table_cols,
-                data=df[TABLE_DEFAULTS].to_dict('records'),
+                data=df[TABLE_DEFAULTS].to_dict("records"),
                 sort_action="native",
                 style_table={
                     "overflowY": "auto",
-                #    "overflowX": "auto",
+                    #    "overflowX": "auto",
                     "width": "100vw",
                     "display": "inline-block",
-                #    "autoWidth": "true",
+                    #    "autoWidth": "true",
                 },
                 style_header={
-                    "backgroundColor": CONFIG["tables"][
-                        "header-background-color"
-                    ]
+                    "backgroundColor": CONFIG["tables"]["header-background-color"]
                 },
                 style_cell={
-                    "backgroundColor": CONFIG["tables"][
-                        "cell-background-color"
-                    ],
+                    "backgroundColor": CONFIG["tables"]["cell-background-color"],
                     "color": CONFIG["tables"]["text-color"],
                     "fontSize": int(CONFIG["tables"]["font-size"]),
                     "textAlign": "left",
-                    'minWidth': '180px', 'width': '180px', 'maxWidth': '180px',
-                    'overflow': 'hidden',
-                    'textOverflow': 'ellipsis',
+                    "minWidth": "180px",
+                    "width": "180px",
+                    "maxWidth": "180px",
+                    "overflow": "hidden",
+                    "textOverflow": "ellipsis",
                 },
                 fixed_rows={"headers": True},
             ),
-        ###### important for latex ######
-        latex_refresh_script,
-        mathjax_script,
+            ###### important for latex ######
+            latex_refresh_script,
+            mathjax_script,
         ]
     )
+
 
 # initialize dashboard
 init_dashboard()
@@ -662,7 +697,9 @@ def update_plot(
                     )
                     for i in range(len(plot_selected_data))
                 ],
-                dash.no_update, dash.no_update, dash.no_update
+                dash.no_update,
+                dash.no_update,
+                dash.no_update,
             )
 
         else:
@@ -671,7 +708,9 @@ def update_plot(
                     get_scatter(df, input_value[i], output_value[i], None, color_by[i])
                     for i in range(len(plot_selected_data))
                 ],
-                dash.no_update, dash.no_update, dash.no_update,
+                dash.no_update,
+                dash.no_update,
+                dash.no_update,
             )
 
     # update input/output values
@@ -702,18 +741,24 @@ def update_plot(
             selected_point = triggered["value"]["points"][0]["pointIndex"]
 
             plot_returns = [
-                get_scatter(df ,input_value[i], output_value[i], [selected_point], None)
+                get_scatter(df, input_value[i], output_value[i], [selected_point], None)
                 for i in range(len(plot_selected_data))
             ]
             img_file = df["plot_file"].iloc[selected_point]
 
             # update data tables
             input_rep = [
-                {"inputs": texlabel(ALL_INPUTS[i]), "value": df[ALL_INPUTS[i]].iloc[selected_point]}
+                {
+                    "inputs": texlabel(ALL_INPUTS[i]),
+                    "value": df[ALL_INPUTS[i]].iloc[selected_point],
+                }
                 for i in range(len(ALL_INPUTS))
             ]
             output_rep = [
-                {"outputs": texlabel.get(ALL_OUTPUTS[i]), "value": df[ALL_OUTPUTS[i]].iloc[selected_point]}
+                {
+                    "outputs": texlabel.get(ALL_OUTPUTS[i]),
+                    "value": df[ALL_OUTPUTS[i]].iloc[selected_point],
+                }
                 for i in range(len(ALL_OUTPUTS))
             ]
 
@@ -723,6 +768,7 @@ def update_plot(
         pass
 
     return updated, dash.no_update, dash.no_update, dash.no_update
+
 
 @app.callback(
     Output("dynamic-plots", "children"),
@@ -762,10 +808,11 @@ def update_cards(n_clicks, n_clicks_remove, remove_id, children):
 
     return children
 
+
 @app.callback(
-    Output('explore-table', 'data'),
-    Output('explore-table', 'columns'),
-    Output('explore-dropdown', 'value'),
+    Output("explore-table", "data"),
+    Output("explore-table", "columns"),
+    Output("explore-dropdown", "value"),
     Input("explore-dropdown", "value"),
 )
 def update_explore_table(selected_values):
@@ -779,11 +826,20 @@ def update_explore_table(selected_values):
         df = df[selected_values]
         selection = selected_values
 
-    columns =  [{"name": i, "id": i, "type": "numeric", "format":Format(precision=N_SIG_FIGS, scheme=Scheme.decimal)} if df.dtypes[i] in ["int", "float64"] else {"name": i, "id": i} for i in df.columns]
-    data=df.to_dict('records')
+    columns = [
+        {
+            "name": i,
+            "id": i,
+            "type": "numeric",
+            "format": Format(precision=N_SIG_FIGS, scheme=Scheme.decimal),
+        }
+        if df.dtypes[i] in ["int", "float64"]
+        else {"name": i, "id": i}
+        for i in df.columns
+    ]
+    data = df.to_dict("records")
 
     return data, columns, selection
-
 
 
 if __name__ == "__main__":
