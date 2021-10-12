@@ -18,6 +18,7 @@ import copy
 from impact_dashboard.layout import html_layout
 from impact_dashboard import CONFIG
 import dash_defer_js_import as dji
+from pmd_beamphysics.labels import texlabel
 
 N_SIG_FIGS = 6
 
@@ -127,8 +128,7 @@ CARD_COUNT = 0
 CARD_INDICES = {}
 LIVE_CARD_COUNT = 0
 
-TABLE_DEFAULTS = ["date", "SOL1:solenoid_field_scale", 'CQ01:b1_gradient', 'SQ01:b1_gradient',  "end_norm_emit_y", "QA01:b1_gradient", "QA02:b1_gradient", "QE01:b1_gradient", "QE02:b1_gradient", "QE03:b1_gradient", "QE04:b1_gradient", "archive"]
-
+TABLE_DEFAULTS = ["date", "SOL1:solenoid_field_scale", 'SQ01:b1_gradient', 'CQ01:b1_gradient', "QA01:b1_gradient", "QA02:b1_gradient", "QE01:b1_gradient", "QE02:b1_gradient", "QE03:b1_gradient", "QE04:b1_gradient", 'end_norm_emit_x',"end_norm_emit_y",'end_norm_emit_z']
 LABELS = {
     #   '_id',
     #   'isotime',
@@ -156,7 +156,7 @@ LABELS = {
     #   'QE01:b1_gradient',
     #   'QE02:b1_gradient',
     #   'QE03:b1_gradient',
-    #    'QE04:b1_gradient',
+    #   'QE04:b1_gradient',
     #   'distgen:xy_dist:file',
     #   'impact_config',
     #   'distgen_input_file',
@@ -243,7 +243,7 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
     global CARD_COUNT
 
     options = [
-        {"label": LABELS.get(item, item), "value": item}
+        {"label": texlabel(item), "value": item}
         for item in ALL_INPUTS + ALL_OUTPUTS
     ]
 
@@ -384,7 +384,7 @@ def get_scatter(df, x_col, y_col, selectedpoints, color_by=None):
         hover_data=["_id"],
         color=color_by,
         color_continuous_scale="viridis",
-        labels={x_col: LABELS.get(x_col, x_col), y_col: LABELS.get(y_col, y_col)},
+        labels={x_col: texlabel(x_col), y_col: texlabel(y_col)},
         template=CONFIG["scatter"]["plotly-theme"],
     )
 
@@ -465,16 +465,16 @@ def init_dashboard():
     df = dataframe()
 
     input_rep = [
-        {"inputs": LABELS.get(ALL_INPUTS[i], ALL_INPUTS[i]), "value": format(df[DROPDOWN_INPUTS[i]].iloc[0], f".{N_SIG_FIGS}g")}
+        {"inputs": texlabel(ALL_INPUTS[i]), "value": format(df[DROPDOWN_INPUTS[i]].iloc[0], f".{N_SIG_FIGS}g")}
         if isinstance(df[DROPDOWN_INPUTS[i]].iloc[0], float) else 
-        {"inputs": LABELS.get(ALL_INPUTS[i], ALL_INPUTS[i]), "value": df[DROPDOWN_INPUTS[i]].iloc[0]}
+        {"inputs": texlabel(ALL_INPUTS[i]), "value": df[DROPDOWN_INPUTS[i]].iloc[0]}
         for i in range(len(DROPDOWN_INPUTS))
     ]
 
     output_rep = [
-        {"outputs": LABELS.get(ALL_OUTPUTS[i], ALL_OUTPUTS[i]), "value": format(df[DROPDOWN_OUTPUTS[i]].iloc[0], f".{N_SIG_FIGS}g")}
+        {"outputs": texlabel(ALL_OUTPUTS[i]), "value": format(df[DROPDOWN_OUTPUTS[i]].iloc[0], f".{N_SIG_FIGS}g")}
         if isinstance(df[DROPDOWN_OUTPUTS[i]].iloc[0], float) else 
-        {"outputs": LABELS.get(ALL_OUTPUTS[i], ALL_OUTPUTS[i]), "value": df[DROPDOWN_OUTPUTS[i]].iloc[0]}
+        {"outputs": texlabel(ALL_OUTPUTS[i]), "value": df[DROPDOWN_OUTPUTS[i]].iloc[0]}
         for i in range(len(DROPDOWN_OUTPUTS))
     ]
 
@@ -502,10 +502,12 @@ def init_dashboard():
                         sort_action="native",
                         # page_size=300,
                         style_table={
-                            "overflowY": "auto",
+                         #   "overflowY": "auto",
                             "overflowX": "auto",
+                            'height': "70vh",
                             "width": CONFIG["tables"]["width"],
                             "display": "inline-block",
+                            "maxHeight": "70vh"
                         },
                         style_header={
                             "backgroundColor": CONFIG["tables"][
@@ -535,6 +537,8 @@ def init_dashboard():
                             "overflowY": "auto",
                             "overflowX": "auto",
                             "width": CONFIG["tables"]["width"],
+                            'height': "70vh",
+                            "maxHeight": "70vh"
                         },
                         style_header={
                             "backgroundColor": CONFIG["tables"][
@@ -705,11 +709,11 @@ def update_plot(
 
             # update data tables
             input_rep = [
-                {"inputs": LABELS.get(ALL_INPUTS[i], ALL_INPUTS[i]), "value": df[ALL_INPUTS[i]].iloc[selected_point]}
+                {"inputs": texlabel(ALL_INPUTS[i]), "value": df[ALL_INPUTS[i]].iloc[selected_point]}
                 for i in range(len(ALL_INPUTS))
             ]
             output_rep = [
-                {"outputs": LABELS.get(ALL_OUTPUTS[i], ALL_OUTPUTS[i]), "value": df[ALL_OUTPUTS[i]].iloc[selected_point]}
+                {"outputs": texlabel.get(ALL_OUTPUTS[i]), "value": df[ALL_OUTPUTS[i]].iloc[selected_point]}
                 for i in range(len(ALL_OUTPUTS))
             ]
 
