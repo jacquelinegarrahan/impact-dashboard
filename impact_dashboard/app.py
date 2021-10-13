@@ -28,21 +28,7 @@ MONGO_PORT = int(os.environ["MONGO_PORT"])
 
 DEFAULT_INPUT = "distgen:n_particle"
 DEFAULT_OUTPUT = "end_sigma_x"
-# To exclude from all rep inputs
-EXCLUDE_ALL_INPUTS = [
-    "mpi_run",
-    "header:Nprow",
-    "header:Npcol",
-    "error",
-    "header:Ny",
-    "header:Nx",
-    "header:Nz",
-    "use_mpi",
-    "change_timestep_1:dt",
-    "timeout",
-    "distgen:xy_dist:file",
-    "stop",
-]
+
 # To exclude from all outputs
 EXCLUDE_ALL_OUTPUTS = ["plot_file", "fingerprint", "isotime"]
 EXCLUDE_PLOT_INPUTS = []
@@ -87,14 +73,91 @@ DB = CLIENT.impact
 results = DB.results
 results = list(results.find())
 
-ALL_INPUTS = ["date"]
-ALL_OUTPUTS = []
-for res in results:
-    ALL_INPUTS += list(res["inputs"].keys())
-    ALL_OUTPUTS += list(res["outputs"].keys())
+ALL_INPUTS = [
+    "date",
+    "_id",
+    "L0A_phase:dtheta0_deg",
+    "L0A_scale:voltage",
+    "L0B_phase:dtheta0_deg",
+    "L0B_scale:voltage",
+    "QA01:b1_gradient",
+    "QA02:b1_gradient",
+    "QE01:b1_gradient",
+    "QE02:b1_gradient",
+    "QE03:b1_gradient",
+    "QE04:b1_gradient",
+    "CQ01:b1_gradient",
+    "SQ01:b1_gradient",
+    "SOL1:solenoid_field_scale",
+    "distgen:t_dist:length:value",
+    "distgen:n_particle",
+    "distgen:xy_dist:file",
+    "change_timestep_1:dt",
+]
 
-ALL_INPUTS = list(set(ALL_INPUTS))
-ALL_OUTPUTS = list(set(ALL_OUTPUTS))
+ALL_OUTPUTS = [
+    "end_max_r",
+    "end_sigma_z",
+    "end_max_amplitude_x",
+    "end_mean_beta",
+    "plot_file",
+    "end_norm_emit_z",
+    "end_max_amplitude_z",
+    "end_loadbalance_min_n_particle",
+    "end_norm_emit_y",
+    "end_sigma_px",
+    "end_cov_x__px",
+    "end_sigma_x",
+    "end_sigma_y",
+    "end_mean_px",
+    "end_moment3_y",
+    "end_moment4_z",
+    "end_max_amplitude_py",
+    "end_mean_py",
+    "run_time",
+    "end_norm_emit_4d",
+    "end_moment3_x",
+    "end_mean_pz",
+    "end_mean_z",
+    "end_loadbalance_max_n_particle",
+    "end_moment4_py",
+    "end_moment3_py",
+    "end_moment3_z",
+    "end_total_charge",
+    "fingerprint",
+    "archive",
+    "end_max_amplitude_pz",
+    "end_sigma_py",
+    "end_mean_y",
+    "error",
+    "end_moment3_px",
+    "end_mean_gamma",
+    "end_cov_z__pz",
+    "end_moment4_px",
+    "end_higher_order_energy_spread",
+    "isotime",
+    "end_mean_x",
+    "end_sigma_pz",
+    "end_t",
+    "end_n_particle_loss",
+    "end_norm_emit_xy",
+    "end_norm_emit_x",
+    "end_mean_kinetic_energy",
+    "end_n_particle",
+    "end_moment4_y",
+    "end_sigma_gamma",
+    "end_moment3_pz",
+    "end_cov_y__py",
+    "end_moment4_pz",
+    "end_max_amplitude_px",
+    "end_moment4_x",
+    "end_max_amplitude_y",
+]
+
+
+DROPDOWN_INPUTS = copy.copy(ALL_INPUTS)
+DROPDOWN_OUTPUTS = copy.copy(ALL_OUTPUTS)
+
 
 # drop all exclusions
 for rem_output in EXCLUDE_ALL_OUTPUTS:
@@ -102,14 +165,6 @@ for rem_output in EXCLUDE_ALL_OUTPUTS:
         DROPDOWN_OUTPUTS.remove(rem_output)
     except:
         pass
-for rem_input in EXCLUDE_ALL_INPUTS:
-    try:
-        DROPDOWN_INPUTS.remove(rem_input)
-    except:
-        pass
-
-DROPDOWN_INPUTS = copy.copy(ALL_INPUTS)
-DROPDOWN_OUTPUTS = copy.copy(ALL_OUTPUTS)
 
 # drop all plot exclusions
 for rem_output in EXCLUDE_PLOT_OUTPUTS:
@@ -539,9 +594,8 @@ def init_dashboard():
                         ],
                         data=input_rep,
                         sort_action="native",
-                        # page_size=300,
                         style_table={
-                            #   "overflowY": "auto",
+                            "overflowY": "auto",
                             "overflowX": "auto",
                             "height": "70vh",
                             "width": CONFIG["tables"]["width"],
@@ -571,7 +625,6 @@ def init_dashboard():
                         ],
                         data=output_rep,
                         sort_action="native",
-                        # page_size=300,
                         style_table={
                             "overflowY": "auto",
                             "overflowX": "auto",
