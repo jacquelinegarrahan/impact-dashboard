@@ -1,4 +1,8 @@
 plotly
 pandas
 dash
-openpmd-beamphysics
+pmd-beamphysics
+dash-bootstrap-components
+flask-caching
+pymongo
+dash-defer-js-import

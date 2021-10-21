@@ -3,8 +3,8 @@ import dash
 import dash_core_components as dcc
 import dash_bootstrap_components as dbc
 import dash_html_components as html
-import dash_table
-from dash_table.Format import Format, Scheme
+from dash import dash_table
+from dash.dash_table.Format import Format, Scheme
 from flask_caching import Cache
 import numpy as np
 import json
