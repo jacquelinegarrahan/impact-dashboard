@@ -1,6 +1,7 @@
 # impact-dashboard
 This repository hosts the source code for the impact dashboard. This must be run using a Chrome browser, version compatability currently unknown. The dashboard has been tested against Chrome=v94. The rendering of LaTeX labels is broken in Firefox at present.
 
+Running requires the setting of `MONGO_HOST` and `MONGO_PORT` environment variables.
 
 ## TODO:
 - [x] Add optional color by column selection. Use linear color mapping, viridis, jet etc.
