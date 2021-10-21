@@ -1,15 +1,12 @@
 name: impact-dashboard
+channels:
+  - conda-forge
+  - defaults
 dependencies:
   - python=3.9
-  - pymongo
   - python-dateutil
-  - paramiko
-  - scp
-  - flask
   - plotly
   - pandas
-  - flask-assets
+  - dash
+  - openpmd-beamphysics
   - pip 
-  pip:
-    - dash
-    - dash_bootstrap_components
