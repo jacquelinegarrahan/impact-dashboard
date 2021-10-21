@@ -1,0 +1,2 @@
+include versioneer.py
+include impact_dashboard/_version.py
