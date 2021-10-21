@@ -4,9 +4,7 @@ channels:
   - defaults
 dependencies:
   - python=3.9
-  - python-dateutil
   - plotly
   - pandas
   - dash
   - openpmd-beamphysics
-  - pip 
