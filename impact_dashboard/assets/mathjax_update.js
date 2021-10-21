@@ -11,4 +11,4 @@ setTimeout(function(){
 
 setInterval(function() {
   MathJax.Hub.Queue(['Typeset',MathJax.Hub])
-},1000);
+}, 1000);
