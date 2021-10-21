@@ -18,9 +18,10 @@ import copy
 from impact_dashboard.layout import html_layout
 from impact_dashboard import CONFIG
 import dash_defer_js_import as dji
-from pmd_beamphysics.labels import texlabel
 
-N_SIG_FIGS = 6
+
+
+from pmd_beamphysics.labels import texlabel
 
 MONGO_HOST = os.environ["MONGO_HOST"]
 MONGO_PORT = int(os.environ["MONGO_PORT"])
@@ -197,103 +198,20 @@ TABLE_DEFAULTS = [
     "end_norm_emit_y",
     "end_norm_emit_z",
 ]
-LABELS = {
-    #   '_id',
-    #   'isotime',
-    #   'distgen:t_dist:length:value',
-    #   'distgen:n_particle',
-    #   'stop',
-    #   'timeout',
-    #   'header:Nx',
-    #   'header:Ny',
-    #   'header:Nz',
-    #   'change_timestep_1:dt',
-    #   'header:Nprow',
-    #   'header:Npcol',
-    #   'use_mpi',
-    #   'mpi_run',
-    #   'SOL1:solenoid_field_scale',
-    #   'CQ01:b1_gradient',
-    #   'SQ01:b1_gradient',
-    #   'L0A_phase:dtheta0_deg',
-    #   'L0B_phase:dtheta0_deg',
-    #   'L0A_scale:voltage',
-    #   'L0B_scale:voltage',
-    #   'QA01:b1_gradient',
-    #   'QA02:b1_gradient',
-    #   'QE01:b1_gradient',
-    #   'QE02:b1_gradient',
-    #   'QE03:b1_gradient',
-    #   'QE04:b1_gradient',
-    #   'distgen:xy_dist:file',
-    #   'impact_config',
-    #   'distgen_input_file',
-    #   'SOLN:IN20:121:BDES',
-    #   'QUAD:IN20:121:BDES',
-    #   'QUAD:IN20:122:BDES',
-    #   'ACCL:IN20:300:L0A_PDES',
-    #   'ACCL:IN20:400:L0B_PDES',
-    #   'ACCL:IN20:300:L0A_ADES',
-    #   'ACCL:IN20:400:L0B_ADES',
-    #   'QUAD:IN20:361:BDES',
-    #   'QUAD:IN20:371:BDES',
-    #   'QUAD:IN20:425:BDES',
-    #   'QUAD:IN20:441:BDES',
-    #   'QUAD:IN20:511:BDES',
-    #   'QUAD:IN20:525:BDES',
-    #   'error',
-    #   'end_t',
-    #   'end_mean_z',
-    #   'end_sigma_z',
-    #   'end_norm_emit_z',
-    #   'end_loadbalance_min_n_particle',
-    #   'end_loadbalance_max_n_particle',
-    #   'end_n_particle',
-    #   'end_moment3_x',
-    #   'end_moment3_y',
-    #   'end_moment3_z',
-    #   'end_max_amplitude_x',
-    #   'end_max_amplitude_y',
-    #   'end_max_amplitude_z',
-    #   'end_mean_x',
-    #   'end_sigma_x',
-    #   'end_norm_emit_x',
-    #   'end_mean_y',
-    #   'end_sigma_y',
-    #   'end_norm_emit_y',
-    #   'end_mean_gamma',
-    #   'end_mean_beta',
-    #   'end_max_r',
-    #   'end_sigma_gamma',
-    #   'end_moment4_x',
-    #   'end_moment4_y',
-    #   'end_moment4_z',
-    #   'end_mean_pz',
-    #   'end_sigma_pz',
-    #   'end_cov_z__pz',
-    #   'end_moment3_px',
-    #   'end_moment3_py',
-    #   'end_moment3_pz',
-    "end_max_amplitude_px": r"$$end \: max(\abs{p_x})$$",
-    "end_max_amplitude_py": r"$$end \: max(\abs{p_y})$$",
-    "end_max_amplitude_pz": r"$$end \: max(\abs{p_z})$$",
-    #   'end_mean_px',
-    #   'end_sigma_px',
-    #   'end_cov_x__px',
-    #   'end_mean_py',
-    #   'end_sigma_py',
-    #   'end_cov_y__py',
-    #   'end_mean_kinetic_energy',
-    #   'end_moment4_px',
-    #   'end_moment4_py',
-    #   'end_moment4_pz',
-    #   'run_time',
-    #   'end_n_particle_loss',
-    #   'end_total_charge',
-    #   'end_higher_order_energy_spread',
-    #   'end_norm_emit_xy',
-    #   'end_norm_emit_4d',
-}
+
+
+def get_label(item: str):
+
+    if "end_" in item:
+        item = item.replace("end_", "")
+
+    label = texlabel(item)
+    if item == label:
+        return item
+    
+    else:
+        return f"$${label}$$"
+      #  return label
 
 
 def build_card(df, x: str = None, y: str = None, selected_data: list = None):
@@ -310,7 +228,7 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
     global CARD_COUNT
 
     options = [
-        {"label": texlabel(item), "value": item} for item in ALL_INPUTS + ALL_OUTPUTS
+        {"label": get_label(item), "value": item} for item in ALL_INPUTS + ALL_OUTPUTS
     ]
 
     # use default input/output when creating a card
@@ -454,7 +372,7 @@ def get_scatter(df, x_col, y_col, selectedpoints, color_by=None):
         hover_data=["_id"],
         color=color_by,
         color_continuous_scale="viridis",
-        labels={x_col: texlabel(x_col), y_col: texlabel(y_col)},
+        labels={x_col: get_label(x_col), y_col: get_label(y_col)},
         template=CONFIG["scatter"]["plotly-theme"],
     )
 
@@ -537,12 +455,12 @@ def init_dashboard():
 
     input_rep = [
         {
-            "inputs": texlabel(ALL_INPUTS[i]),
-            "value": format(df[DROPDOWN_INPUTS[i]].iloc[0], f".{N_SIG_FIGS}g"),
+            "inputs": get_label(ALL_INPUTS[i]),
+            "value": format(df[DROPDOWN_INPUTS[i]].iloc[0], f".{CONFIG['tables']['n_sig_figs']}g"),
         }
         if isinstance(df[DROPDOWN_INPUTS[i]].iloc[0], float)
         else {
-            "inputs": texlabel(ALL_INPUTS[i]),
+            "inputs": get_label(ALL_INPUTS[i]),
             "value": df[DROPDOWN_INPUTS[i]].iloc[0],
         }
         for i in range(len(DROPDOWN_INPUTS))
@@ -550,12 +468,12 @@ def init_dashboard():
 
     output_rep = [
         {
-            "outputs": texlabel(ALL_OUTPUTS[i]),
-            "value": format(df[DROPDOWN_OUTPUTS[i]].iloc[0], f".{N_SIG_FIGS}g"),
+            "outputs": get_label(ALL_OUTPUTS[i]),
+            "value": format(df[DROPDOWN_OUTPUTS[i]].iloc[0], f".{CONFIG['tables']['n_sig_figs']}g"),
         }
         if isinstance(df[DROPDOWN_OUTPUTS[i]].iloc[0], float)
         else {
-            "outputs": texlabel(ALL_OUTPUTS[i]),
+            "outputs": get_label(ALL_OUTPUTS[i]),
             "value": df[DROPDOWN_OUTPUTS[i]].iloc[0],
         }
         for i in range(len(DROPDOWN_OUTPUTS))
@@ -566,7 +484,7 @@ def init_dashboard():
             "name": i,
             "id": i,
             "type": "numeric",
-            "format": Format(precision=2, scheme=Scheme.decimal),
+            "format": Format(precision=int(CONFIG["tables"]["n_sig_figs"]), scheme=Scheme.decimal),
         }
         if df.dtypes[i] in ["int", "float64"]
         else {"name": i, "id": i}
@@ -576,6 +494,7 @@ def init_dashboard():
     # Custom HTML layout
     app.index_string = html_layout
 
+
     # Create Layout
     app.layout = html.Div(
         [
@@ -584,7 +503,7 @@ def init_dashboard():
                     html.Img(
                         id="dash-image",
                         src=df["plot_file"].iloc[0],
-                        style={"width": CONFIG["dash"]["width"]},
+                        style={"width": CONFIG["dash"]["width"], "height": CONFIG["dash"]["height"]},
                     ),
                     dash_table.DataTable(
                         id="input-table",
@@ -597,10 +516,10 @@ def init_dashboard():
                         style_table={
                             "overflowY": "auto",
                             "overflowX": "auto",
-                            "height": "70vh",
+                            "height":  CONFIG["dash"]["height"],
                             "width": CONFIG["tables"]["width"],
                             "display": "inline-block",
-                            "maxHeight": "70vh",
+                            "maxHeight":  CONFIG["dash"]["height"],
                         },
                         style_header={
                             "backgroundColor": CONFIG["tables"][
@@ -629,8 +548,8 @@ def init_dashboard():
                             "overflowY": "auto",
                             "overflowX": "auto",
                             "width": CONFIG["tables"]["width"],
-                            "height": "70vh",
-                            "maxHeight": "70vh",
+                            "height":  CONFIG["dash"]["height"],
+                            "maxHeight": CONFIG["dash"]["height"],
                         },
                         style_header={
                             "backgroundColor": CONFIG["tables"][
@@ -648,7 +567,7 @@ def init_dashboard():
                         fixed_rows={"headers": True},
                     ),
                 ],
-                style={"height": "70vh"},
+                style={"height": CONFIG["dash"]["height"]},
             ),
             dbc.Row(
                 className="row row-cols-4",
@@ -668,7 +587,7 @@ def init_dashboard():
             html.Div(
                 dcc.Dropdown(
                     id="explore-dropdown",
-                    options=[{"label": i, "value": i} for i in df.columns]
+                    options=[{"label": get_label(i), "value": i} for i in df.columns]
                     + [{"label": "Reset", "value": "Reset"}],
                     value=TABLE_DEFAULTS,
                     clearable=False,
@@ -709,6 +628,7 @@ def init_dashboard():
             mathjax_script,
         ]
     )
+                      
 
 
 # initialize dashboard
@@ -802,14 +722,14 @@ def update_plot(
             # update data tables
             input_rep = [
                 {
-                    "inputs": texlabel(ALL_INPUTS[i]),
+                    "inputs": get_label(ALL_INPUTS[i]),
                     "value": df[ALL_INPUTS[i]].iloc[selected_point],
                 }
                 for i in range(len(ALL_INPUTS))
             ]
             output_rep = [
                 {
-                    "outputs": texlabel.get(ALL_OUTPUTS[i]),
+                    "outputs": get_label(ALL_OUTPUTS[i]),
                     "value": df[ALL_OUTPUTS[i]].iloc[selected_point],
                 }
                 for i in range(len(ALL_OUTPUTS))
@@ -821,7 +741,6 @@ def update_plot(
         pass
 
     return updated, dash.no_update, dash.no_update, dash.no_update
-
 
 @app.callback(
     Output("dynamic-plots", "children"),
@@ -884,7 +803,7 @@ def update_explore_table(selected_values):
             "name": i,
             "id": i,
             "type": "numeric",
-            "format": Format(precision=N_SIG_FIGS, scheme=Scheme.decimal),
+            "format": Format(precision=int(CONFIG["tables"]["n_sig_figs"]), scheme=Scheme.decimal),
         }
         if df.dtypes[i] in ["int", "float64"]
         else {"name": i, "id": i}
@@ -896,4 +815,4 @@ def update_explore_table(selected_values):
 
 
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    app.run_server()
