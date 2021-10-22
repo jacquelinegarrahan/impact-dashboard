@@ -1,0 +1,8 @@
+plotly
+pandas
+dash
+pmd-beamphysics
+dash-bootstrap-components
+flask-caching
+pymongo
+dash-defer-js-import

@@ -3,17 +3,25 @@ import dash
 import dash_core_components as dcc
 import dash_bootstrap_components as dbc
 import dash_html_components as html
-import dash_table
+from dash import dash_table
+from dash.dash_table.Format import Format, Scheme
 from flask_caching import Cache
 import numpy as np
 import json
+import math
 import pandas as pd
 import plotly.express as px
 from pymongo import MongoClient
 from dash.dependencies import Input, Output, ClientsideFunction, State, MATCH, ALL
 import os
+import copy
 from impact_dashboard.layout import html_layout
 from impact_dashboard import CONFIG
+import dash_defer_js_import as dji
+
+
+
+from pmd_beamphysics.labels import texlabel
 
 MONGO_HOST = os.environ["MONGO_HOST"]
 MONGO_PORT = int(os.environ["MONGO_PORT"])
@@ -21,40 +29,30 @@ MONGO_PORT = int(os.environ["MONGO_PORT"])
 
 DEFAULT_INPUT = "distgen:n_particle"
 DEFAULT_OUTPUT = "end_sigma_x"
-EXCLUDE_INPUTS = [
-    "mpi_run",
-    "header:Nprow",
-    "header:Npcol",
-    "error",
-    "header:Ny",
-    "header:Nx",
-    "header:Nz",
-    "use_mpi",
-    "change_timestep_1:dt",
-    "timeout",
-    "distgen:xy_dist:file",
-]
-EXCLUDE_OUTPUTS = ["plot_file", "fingerprint", "archive", "isotime"]
+
+# To exclude from all outputs
+EXCLUDE_ALL_OUTPUTS = ["plot_file", "fingerprint", "isotime"]
+EXCLUDE_PLOT_INPUTS = []
+EXCLUDE_PLOT_OUTPUTS = ["plot_file", "fingerprint", "archive", "isotime"]
+
+latex_refresh_script = dji.Import(src="./assets/mathjax_test.js")
+mathjax_script = dji.Import(
+    src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_SVG"
+)
 
 app = dash.Dash(
-    external_stylesheets=[
-        #  "/static/dist/css/styles.css",
-        #  "https://fonts.googleapis.com/css?family=Lato",
-        #    dbc.themes.BOOTSTRAP,
-        dbc.themes.DARKLY
-    ],
+    external_stylesheets=[dbc.themes.DARKLY],
     external_scripts=[
-        "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML"
+        "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_SVG",
     ],
 )
 
-cache = Cache(app.server, config={
-    'CACHE_TYPE': 'filesystem',
-    'CACHE_DIR': 'cache-directory'
-})
+cache = Cache(
+    app.server, config={"CACHE_TYPE": "filesystem", "CACHE_DIR": "cache-directory"}
+)
 
 
-TIMEOUT=100
+TIMEOUT = 10
 
 # required for building df
 def flatten_dict(d):
@@ -76,143 +74,144 @@ DB = CLIENT.impact
 results = DB.results
 results = list(results.find())
 
-flattened = [flatten_dict(res) for res in results]
-DF = pd.DataFrame(flattened)
+ALL_INPUTS = [
+    "date",
+    "_id",
+    "L0A_phase:dtheta0_deg",
+    "L0A_scale:voltage",
+    "L0B_phase:dtheta0_deg",
+    "L0B_scale:voltage",
+    "QA01:b1_gradient",
+    "QA02:b1_gradient",
+    "QE01:b1_gradient",
+    "QE02:b1_gradient",
+    "QE03:b1_gradient",
+    "QE04:b1_gradient",
+    "CQ01:b1_gradient",
+    "SQ01:b1_gradient",
+    "SOL1:solenoid_field_scale",
+    "distgen:t_dist:length:value",
+    "distgen:n_particle",
+    "distgen:xy_dist:file",
+    "change_timestep_1:dt",
+]
 
-# Load DataFrame
-DF["date"] = pd.to_datetime(DF["isotime"])
-DF["_id"] = DF["_id"].astype(str)
-DF = DF.sort_values(by="date")
+ALL_OUTPUTS = [
+    "end_max_r",
+    "end_sigma_z",
+    "end_max_amplitude_x",
+    "end_mean_beta",
+    "plot_file",
+    "end_norm_emit_z",
+    "end_max_amplitude_z",
+    "end_loadbalance_min_n_particle",
+    "end_norm_emit_y",
+    "end_sigma_px",
+    "end_cov_x__px",
+    "end_sigma_x",
+    "end_sigma_y",
+    "end_mean_px",
+    "end_moment3_y",
+    "end_moment4_z",
+    "end_max_amplitude_py",
+    "end_mean_py",
+    "run_time",
+    "end_norm_emit_4d",
+    "end_moment3_x",
+    "end_mean_pz",
+    "end_mean_z",
+    "end_loadbalance_max_n_particle",
+    "end_moment4_py",
+    "end_moment3_py",
+    "end_moment3_z",
+    "end_total_charge",
+    "fingerprint",
+    "archive",
+    "end_max_amplitude_pz",
+    "end_sigma_py",
+    "end_mean_y",
+    "error",
+    "end_moment3_px",
+    "end_mean_gamma",
+    "end_cov_z__pz",
+    "end_moment4_px",
+    "end_higher_order_energy_spread",
+    "isotime",
+    "end_mean_x",
+    "end_sigma_pz",
+    "end_t",
+    "end_n_particle_loss",
+    "end_norm_emit_xy",
+    "end_norm_emit_x",
+    "end_mean_kinetic_energy",
+    "end_n_particle",
+    "end_moment4_y",
+    "end_sigma_gamma",
+    "end_moment3_pz",
+    "end_cov_y__py",
+    "end_moment4_pz",
+    "end_max_amplitude_px",
+    "end_moment4_x",
+    "end_max_amplitude_y",
+]
 
-ALL_INPUTS = ["date"]
-ALL_OUTPUTS = []
-for res in results:
-    ALL_INPUTS += list(res["inputs"].keys())
-    ALL_OUTPUTS += list(res["outputs"].keys())
-ALL_INPUTS = set(ALL_INPUTS)
-ALL_OUTPUTS = set(ALL_OUTPUTS)
 
-# drop all unused outputs
-for rem_output in EXCLUDE_OUTPUTS:
+DROPDOWN_INPUTS = copy.copy(ALL_INPUTS)
+DROPDOWN_OUTPUTS = copy.copy(ALL_OUTPUTS)
+
+
+# drop all exclusions
+for rem_output in EXCLUDE_ALL_OUTPUTS:
     try:
-        ALL_OUTPUTS.remove(rem_output)
+        DROPDOWN_OUTPUTS.remove(rem_output)
     except:
         pass
-for rem_input in EXCLUDE_INPUTS:
+
+# drop all plot exclusions
+for rem_output in EXCLUDE_PLOT_OUTPUTS:
     try:
-        ALL_INPUTS.remove(rem_input)
+        DROPDOWN_OUTPUTS.remove(rem_output)
     except:
         pass
-
-ALL_INPUTS = list(ALL_INPUTS)
-ALL_OUTPUTS = list(ALL_OUTPUTS)
-
-
-
+for rem_input in EXCLUDE_PLOT_INPUTS:
+    try:
+        DROPDOWN_INPUTS.remove(rem_input)
+    except:
+        pass
 
 CARD_COUNT = 0
 CARD_INDICES = {}
 LIVE_CARD_COUNT = 0
 
+TABLE_DEFAULTS = [
+    "date",
+    "SOL1:solenoid_field_scale",
+    "SQ01:b1_gradient",
+    "CQ01:b1_gradient",
+    "QA01:b1_gradient",
+    "QA02:b1_gradient",
+    "QE01:b1_gradient",
+    "QE02:b1_gradient",
+    "QE03:b1_gradient",
+    "QE04:b1_gradient",
+    "end_norm_emit_x",
+    "end_norm_emit_y",
+    "end_norm_emit_z",
+]
 
-LABELS = {
-    #   '_id',
-    #   'isotime',
-    #   'distgen:t_dist:length:value',
-    #   'distgen:n_particle',
-    #   'stop',
-    #   'timeout',
-    #   'header:Nx',
-    #   'header:Ny',
-    #   'header:Nz',
-    #   'change_timestep_1:dt',
-    #   'header:Nprow',
-    #   'header:Npcol',
-    #   'use_mpi',
-    #   'mpi_run',
-    #   'SOL1:solenoid_field_scale',
-    #   'CQ01:b1_gradient',
-    #   'SQ01:b1_gradient',
-    #   'L0A_phase:dtheta0_deg',
-    #   'L0B_phase:dtheta0_deg',
-    #   'L0A_scale:voltage',
-    #   'L0B_scale:voltage',
-    #   'QA01:b1_gradient',
-    #   'QA02:b1_gradient',
-    #   'QE01:b1_gradient',
-    #   'QE02:b1_gradient',
-    #   'QE03:b1_gradient',
-    #    'QE04:b1_gradient',
-    #   'distgen:xy_dist:file',
-    #   'impact_config',
-    #   'distgen_input_file',
-    #   'SOLN:IN20:121:BDES',
-    #   'QUAD:IN20:121:BDES',
-    #   'QUAD:IN20:122:BDES',
-    #   'ACCL:IN20:300:L0A_PDES',
-    #   'ACCL:IN20:400:L0B_PDES',
-    #   'ACCL:IN20:300:L0A_ADES',
-    #   'ACCL:IN20:400:L0B_ADES',
-    #   'QUAD:IN20:361:BDES',
-    #   'QUAD:IN20:371:BDES',
-    #   'QUAD:IN20:425:BDES',
-    #   'QUAD:IN20:441:BDES',
-    #   'QUAD:IN20:511:BDES',
-    #   'QUAD:IN20:525:BDES',
-    #   'error',
-    #   'end_t',
-    #   'end_mean_z',
-    #   'end_sigma_z',
-    #   'end_norm_emit_z',
-    #   'end_loadbalance_min_n_particle',
-    #   'end_loadbalance_max_n_particle',
-    #   'end_n_particle',
-    #   'end_moment3_x',
-    #   'end_moment3_y',
-    #   'end_moment3_z',
-    #   'end_max_amplitude_x',
-    #   'end_max_amplitude_y',
-    #   'end_max_amplitude_z',
-    #   'end_mean_x',
-    #   'end_sigma_x',
-    #   'end_norm_emit_x',
-    #   'end_mean_y',
-    #   'end_sigma_y',
-    #   'end_norm_emit_y',
-    #   'end_mean_gamma',
-    #   'end_mean_beta',
-    #   'end_max_r',
-    #   'end_sigma_gamma',
-    #   'end_moment4_x',
-    #   'end_moment4_y',
-    #   'end_moment4_z',
-    #   'end_mean_pz',
-    #   'end_sigma_pz',
-    #   'end_cov_z__pz',
-    #   'end_moment3_px',
-    #   'end_moment3_py',
-    #   'end_moment3_pz',
-    "end_max_amplitude_px": "$end max amplitude p_x$",
-    "end_max_amplitude_py": "$end max amplitude p_y$",
-    "end_max_amplitude_pz": "$end max amplitude p_z$",
-    #   'end_mean_px',
-    #   'end_sigma_px',
-    #   'end_cov_x__px',
-    #   'end_mean_py',
-    #   'end_sigma_py',
-    #   'end_cov_y__py',
-    #   'end_mean_kinetic_energy',
-    #   'end_moment4_px',
-    #   'end_moment4_py',
-    #   'end_moment4_pz',
-    #   'run_time',
-    #   'end_n_particle_loss',
-    #   'end_total_charge',
-    #   'end_higher_order_energy_spread',
-    #   'end_norm_emit_xy',
-    #   'end_norm_emit_4d',
-}
 
+def get_label(item: str):
+
+    if "end_" in item:
+        item = item.replace("end_", "")
+
+    label = texlabel(item)
+    if item == label:
+        return item
+    
+    else:
+        return f"$${label}$$"
+      #  return label
 
 
 def build_card(df, x: str = None, y: str = None, selected_data: list = None):
@@ -229,8 +228,7 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
     global CARD_COUNT
 
     options = [
-        {"label": input_item, "value": input_item}
-        for input_item in ALL_INPUTS + ALL_OUTPUTS
+        {"label": get_label(item), "value": item} for item in ALL_INPUTS + ALL_OUTPUTS
     ]
 
     # use default input/output when creating a card
@@ -250,8 +248,10 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
                                     ["X:"],
                                     style={
                                         "display": "block",
-                                        "text-align": "center",
-                                        "font-size": int(CONFIG["card"]["header-font-size"])
+                                        "textAlign": "center",
+                                        "fontSize": int(
+                                            CONFIG["card"]["header-font-size"]
+                                        ),
                                     },
                                 ),
                                 html.Div(
@@ -266,12 +266,12 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
                                     ),
                                     style={
                                         "width": "100%",
-                                        "font-size": int(CONFIG["card"]["font-size"]),
+                                        "fontSize": int(CONFIG["card"]["font-size"]),
                                         "margins": 0,
                                     },
                                 ),
                             ],
-                            style={"margin-right": "2px", "margin-left": "2px"},
+                            style={"marginRight": "2px", "marginLeft": "2px"},
                         ),
                         dbc.Col(
                             children=[
@@ -279,8 +279,10 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
                                     ["Y:"],
                                     style={
                                         "display": "block",
-                                        "text-align": "center",
-                                        "font-size": int(CONFIG["card"]["header-font-size"])
+                                        "textAlign": "center",
+                                        "fontSize": int(
+                                            CONFIG["card"]["header-font-size"]
+                                        ),
                                     },
                                 ),
                                 html.Div(
@@ -295,11 +297,11 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
                                     ),
                                     style={
                                         "width": "100%",
-                                        "font-size": int(CONFIG["card"]["font-size"]),
+                                        "fontSize": int(CONFIG["card"]["font-size"]),
                                     },
                                 ),
                             ],
-                            style={"margin-right": "2px", "margin-left": "2px"},
+                            style={"marginRight": "2px", "marginLeft": "2px"},
                         ),
                         dbc.Col(
                             children=[
@@ -307,8 +309,10 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
                                     ["Color by:"],
                                     style={
                                         "display": "block",
-                                        "text-align": "center",
-                                        "font-size": int(CONFIG["card"]["header-font-size"])
+                                        "textAlign": "center",
+                                        "fontSize": int(
+                                            CONFIG["card"]["header-font-size"]
+                                        ),
                                     },
                                 ),
                                 html.Div(
@@ -323,11 +327,11 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
                                     style={
                                         "width": "100%",
                                         "display": "inline-block",
-                                        "font-size": int(CONFIG["card"]["font-size"]),
+                                        "fontSize": int(CONFIG["card"]["font-size"]),
                                     },
                                 ),
                             ],
-                            style={"margin-right": "2px", "margin-left": "2px"},
+                            style={"marginRight": "2px", "marginLeft": "2px"},
                         ),
                         html.Button(
                             "x",
@@ -357,8 +361,6 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
     return card
 
 
-
-
 def get_scatter(df, x_col, y_col, selectedpoints, color_by=None):
     if color_by == "NONE":
         color_by = None
@@ -370,7 +372,7 @@ def get_scatter(df, x_col, y_col, selectedpoints, color_by=None):
         hover_data=["_id"],
         color=color_by,
         color_continuous_scale="viridis",
-        labels={x_col: LABELS.get(x_col, x_col), y_col: LABELS.get(y_col, y_col)},
+        labels={x_col: get_label(x_col), y_col: get_label(y_col)},
         template=CONFIG["scatter"]["plotly-theme"],
     )
 
@@ -388,7 +390,7 @@ def get_scatter(df, x_col, y_col, selectedpoints, color_by=None):
                     "type": "rect",
                     "line": {"width": 1, "dash": "dot", "color": "darkgrey"},
                 },
-                **selection_bounds
+                **selection_bounds,
             )
         )
 
@@ -418,6 +420,8 @@ def get_scatter(df, x_col, y_col, selectedpoints, color_by=None):
         hovermode="closest",
     )
 
+    # fig.update_xaxes(title_text=r"$$x (Å)$$")
+
     return fig
 
 
@@ -430,45 +434,76 @@ def get_df():
     results = list(results.find())
 
     flattened = [flatten_dict(res) for res in results]
-
     df = pd.DataFrame(flattened)
 
     # Load DataFrame
     df["date"] = pd.to_datetime(df["isotime"])
     df["_id"] = df["_id"].astype(str)
     df = df.sort_values(by="date")
-    return df.to_json(date_format='iso', orient='split')
-    
+
+    return df.to_json(date_format="iso", orient="split")
+
+
 def dataframe():
-    return pd.read_json(get_df(), orient='split')
+    return pd.read_json(get_df(), orient="split")
+
 
 def init_dashboard():
     """Create a Plotly Dash dashboard."""
-    # pass our own flask server instead of using Dash's
 
     df = dataframe()
 
     input_rep = [
-        {"inputs": ALL_INPUTS[i], "value": df[ALL_INPUTS[i]].iloc[0]}
-        for i in range(len(ALL_INPUTS))
+        {
+            "inputs": get_label(ALL_INPUTS[i]),
+            "value": format(df[DROPDOWN_INPUTS[i]].iloc[0], f".{CONFIG['tables']['n_sig_figs']}g"),
+        }
+        if isinstance(df[DROPDOWN_INPUTS[i]].iloc[0], float)
+        else {
+            "inputs": get_label(ALL_INPUTS[i]),
+            "value": df[DROPDOWN_INPUTS[i]].iloc[0],
+        }
+        for i in range(len(DROPDOWN_INPUTS))
     ]
+
     output_rep = [
-        {"outputs": ALL_OUTPUTS[i], "value": df[ALL_OUTPUTS[i]].iloc[0]}
-        for i in range(len(ALL_OUTPUTS))
+        {
+            "outputs": get_label(ALL_OUTPUTS[i]),
+            "value": format(df[DROPDOWN_OUTPUTS[i]].iloc[0], f".{CONFIG['tables']['n_sig_figs']}g"),
+        }
+        if isinstance(df[DROPDOWN_OUTPUTS[i]].iloc[0], float)
+        else {
+            "outputs": get_label(ALL_OUTPUTS[i]),
+            "value": df[DROPDOWN_OUTPUTS[i]].iloc[0],
+        }
+        for i in range(len(DROPDOWN_OUTPUTS))
+    ]
+
+    explore_table_cols = [
+        {
+            "name": i,
+            "id": i,
+            "type": "numeric",
+            "format": Format(precision=int(CONFIG["tables"]["n_sig_figs"]), scheme=Scheme.decimal),
+        }
+        if df.dtypes[i] in ["int", "float64"]
+        else {"name": i, "id": i}
+        for i in df[TABLE_DEFAULTS].columns
     ]
 
     # Custom HTML layout
     app.index_string = html_layout
 
+
     # Create Layout
     app.layout = html.Div(
-        children=[
+        [
             dbc.Row(
                 children=[
                     html.Img(
                         id="dash-image",
                         src=df["plot_file"].iloc[0],
-                        style={"width": CONFIG["dash"]["width"]},
+                        style={"width": CONFIG["dash"]["width"], "height": CONFIG["dash"]["height"]},
                     ),
                     dash_table.DataTable(
                         id="input-table",
@@ -478,12 +513,13 @@ def init_dashboard():
                         ],
                         data=input_rep,
                         sort_action="native",
-                        # page_size=300,
                         style_table={
                             "overflowY": "auto",
                             "overflowX": "auto",
+                            "height":  CONFIG["dash"]["height"],
                             "width": CONFIG["tables"]["width"],
                             "display": "inline-block",
+                            "maxHeight":  CONFIG["dash"]["height"],
                         },
                         style_header={
                             "backgroundColor": CONFIG["tables"][
@@ -508,11 +544,12 @@ def init_dashboard():
                         ],
                         data=output_rep,
                         sort_action="native",
-                        # page_size=300,
                         style_table={
                             "overflowY": "auto",
                             "overflowX": "auto",
                             "width": CONFIG["tables"]["width"],
+                            "height":  CONFIG["dash"]["height"],
+                            "maxHeight": CONFIG["dash"]["height"],
                         },
                         style_header={
                             "backgroundColor": CONFIG["tables"][
@@ -530,7 +567,7 @@ def init_dashboard():
                         fixed_rows={"headers": True},
                     ),
                 ],
-                style={"height": "70vh"},
+                style={"height": CONFIG["dash"]["height"]},
             ),
             dbc.Row(
                 className="row row-cols-4",
@@ -550,49 +587,53 @@ def init_dashboard():
             html.Div(
                 dcc.Dropdown(
                     id="explore-dropdown",
-                    options=[{"label": i, "value": i} for i in df.columns],
-                    value=df.columns,
+                    options=[{"label": get_label(i), "value": i} for i in df.columns]
+                    + [{"label": "Reset", "value": "Reset"}],
+                    value=TABLE_DEFAULTS,
                     clearable=False,
-                    multi=True
+                    multi=True,
                 ),
-                style={
-                    "width": "100%",
-                    "font-size": 20,
-                    "margins": 0,
-                },
+                style={"width": "100%", "fontSize": 20, "margins": 0,},
             ),
-
             dash_table.DataTable(
                 id="explore-table",
-                columns=[{"name": i, "id": i} for i in df.columns],
-                data=df.to_dict('records'),
+                columns=explore_table_cols,
+                data=df[TABLE_DEFAULTS].to_dict("records"),
                 sort_action="native",
                 style_table={
                     "overflowY": "auto",
-                    "overflowX": "auto",
+                    #    "overflowX": "auto",
                     "width": "100vw",
                     "display": "inline-block",
+                    #    "autoWidth": "true",
                 },
                 style_header={
-                    "backgroundColor": CONFIG["tables"][
-                        "header-background-color"
-                    ]
+                    "backgroundColor": CONFIG["tables"]["header-background-color"]
                 },
                 style_cell={
-                    "backgroundColor": CONFIG["tables"][
-                        "cell-background-color"
-                    ],
+                    "backgroundColor": CONFIG["tables"]["cell-background-color"],
                     "color": CONFIG["tables"]["text-color"],
                     "fontSize": int(CONFIG["tables"]["font-size"]),
                     "textAlign": "left",
+                    "minWidth": "180px",
+                    "width": "180px",
+                    "maxWidth": "180px",
+                    "overflow": "hidden",
+                    "textOverflow": "ellipsis",
                 },
                 fixed_rows={"headers": True},
             ),
-        ],
+            ###### important for latex ######
+            latex_refresh_script,
+            mathjax_script,
+        ]
     )
+                      
+
 
 # initialize dashboard
 init_dashboard()
+
 
 @app.callback(
     Output({"type": "scatter-plot", "index": ALL}, "figure"),
@@ -629,7 +670,9 @@ def update_plot(
                     )
                     for i in range(len(plot_selected_data))
                 ],
-                dash.no_update, dash.no_update, dash.no_update
+                dash.no_update,
+                dash.no_update,
+                dash.no_update,
             )
 
         else:
@@ -638,7 +681,9 @@ def update_plot(
                     get_scatter(df, input_value[i], output_value[i], None, color_by[i])
                     for i in range(len(plot_selected_data))
                 ],
-                dash.no_update, dash.no_update, dash.no_update
+                dash.no_update,
+                dash.no_update,
+                dash.no_update,
             )
 
     # update input/output values
@@ -669,18 +714,24 @@ def update_plot(
             selected_point = triggered["value"]["points"][0]["pointIndex"]
 
             plot_returns = [
-                get_scatter(df ,input_value[i], output_value[i], [selected_point], None)
+                get_scatter(df, input_value[i], output_value[i], [selected_point], None)
                 for i in range(len(plot_selected_data))
             ]
             img_file = df["plot_file"].iloc[selected_point]
 
             # update data tables
             input_rep = [
-                {"inputs": ALL_INPUTS[i], "value": df[ALL_INPUTS[i]].iloc[selected_point]}
+                {
+                    "inputs": get_label(ALL_INPUTS[i]),
+                    "value": df[ALL_INPUTS[i]].iloc[selected_point],
+                }
                 for i in range(len(ALL_INPUTS))
             ]
             output_rep = [
-                {"outputs": ALL_OUTPUTS[i], "value": df[ALL_OUTPUTS[i]].iloc[selected_point]}
+                {
+                    "outputs": get_label(ALL_OUTPUTS[i]),
+                    "value": df[ALL_OUTPUTS[i]].iloc[selected_point],
+                }
                 for i in range(len(ALL_OUTPUTS))
             ]
 
@@ -729,27 +780,39 @@ def update_cards(n_clicks, n_clicks_remove, remove_id, children):
 
     return children
 
+
 @app.callback(
-    Output('explore-table', 'data'),
-    Output('explore-table', 'columns'),
+    Output("explore-table", "data"),
+    Output("explore-table", "columns"),
+    Output("explore-dropdown", "value"),
     Input("explore-dropdown", "value"),
 )
 def update_explore_table(selected_values):
     df = dataframe()
-    df = df[selected_values]
-    columns=[{"name": i, "id": i} for i in df.columns]
-    data=df.to_dict('records')
 
-    print(columns)
-    print(data)
+    if "Reset" in selected_values:
+        df = df[TABLE_DEFAULTS]
+        selection = TABLE_DEFAULTS
 
-    return data, columns
+    else:
+        df = df[selected_values]
+        selection = selected_values
 
+    columns = [
+        {
+            "name": i,
+            "id": i,
+            "type": "numeric",
+            "format": Format(precision=int(CONFIG["tables"]["n_sig_figs"]), scheme=Scheme.decimal),
+        }
+        if df.dtypes[i] in ["int", "float64"]
+        else {"name": i, "id": i}
+        for i in df.columns
+    ]
+    data = df.to_dict("records")
 
-
-    
-
+    return data, columns, selection
 
 
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    app.run_server()
