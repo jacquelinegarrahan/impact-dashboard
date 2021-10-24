@@ -653,7 +653,7 @@ init_dashboard()
     Input({"type": "dynamic-coloring", "index": ALL}, "value"),
 )
 def update_data(
-    input_value, output_value, plot_selected_data, plot_click_data, color_by
+    x_value, y_value, plot_selected_data, plot_click_data, color_by
 ):
     """Handles data updates and synchronizes across elements.
 
@@ -679,7 +679,7 @@ def update_data(
             return (
                 [
                     get_scatter(
-                        df, input_value[i], output_value[i], selected_points, None
+                        df, x_value[i], y_value[i], selected_points, None
                     )
                     for i in range(len(plot_selected_data))
                 ],
@@ -691,7 +691,7 @@ def update_data(
         else:
             return (
                 [
-                    get_scatter(df, input_value[i], output_value[i], None, color_by[i])
+                    get_scatter(df, x_value[i], y_value[i], None, color_by[i])
                     for i in range(len(plot_selected_data))
                 ],
                 dash.no_update,
@@ -716,8 +716,8 @@ def update_data(
         # update the scatter plot at a given index, all others remain same
         updated[CARD_INDICES[prop_idx]] = get_scatter(
             df,
-            input_value[CARD_INDICES[prop_idx]],
-            output_value[CARD_INDICES[prop_idx]],
+            x_value[CARD_INDICES[prop_idx]],
+            y_value[CARD_INDICES[prop_idx]],
             selected_points,
             color_by[CARD_INDICES[prop_idx]],
         )
@@ -730,7 +730,7 @@ def update_data(
             selected_point = triggered["value"]["points"][0]["pointIndex"]
 
             plot_returns = [
-                get_scatter(df, input_value[i], output_value[i], [selected_point], None)
+                get_scatter(df, x_value[i], y_value[i], [selected_point], None)
                 for i in range(len(plot_selected_data))
             ]
 
