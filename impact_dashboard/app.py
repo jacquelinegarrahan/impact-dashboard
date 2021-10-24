@@ -450,10 +450,12 @@ def dataframe():
 
 
 def init_dashboard():
-    """Create a Plotly Dash dashboard."""
+    """Create and format Plotly Dash dashboard."""
 
+    # get initial latest cached df
     df = dataframe()
 
+    # create a representation of all inputs for use with table using appropriate number of sig figs
     input_rep = [
         {
             "inputs": get_label(ALL_INPUTS[i]),
@@ -467,6 +469,7 @@ def init_dashboard():
         for i in range(len(DROPDOWN_INPUTS))
     ]
 
+    # create a representation of all inputs for use with table using appropriate number of sig figs
     output_rep = [
         {
             "outputs": get_label(ALL_OUTPUTS[i]),
@@ -480,6 +483,7 @@ def init_dashboard():
         for i in range(len(DROPDOWN_OUTPUTS))
     ]
 
+    # Format columns for explore table indicating number of sig figs for numeric types
     explore_table_cols = [
         {
             "name": i,
