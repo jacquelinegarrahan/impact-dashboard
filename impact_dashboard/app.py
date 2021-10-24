@@ -198,6 +198,9 @@ TABLE_DEFAULTS = [
 
 
 def get_label(item: str):
+    """Utility function for stripping end prefix from label and formatting
+    for LaTeX rendering.
+    """
 
     if "end_" in item:
         item = item.replace("end_", "")
@@ -423,6 +426,8 @@ def get_scatter(df, x_col, y_col, selectedpoints, color_by=None):
 
 @cache.memoize(timeout=TIMEOUT)
 def get_df():
+    """Function used for updating the cached dataframe.
+    """
     # get data
     CLIENT = MongoClient(MONGO_HOST, MONGO_PORT)
     DB = CLIENT.impact
@@ -623,13 +628,14 @@ def init_dashboard():
             latex_refresh_script,
             mathjax_script,
         ]
-    )
-                      
+    )                   
 
 
 # initialize dashboard
 init_dashboard()
 
+
+# REGISTER APP CALLBACKS
 
 @app.callback(
     Output({"type": "scatter-plot", "index": ALL}, "figure"),
@@ -642,18 +648,25 @@ init_dashboard()
     Input({"type": "scatter-plot", "index": ALL}, "clickData"),
     Input({"type": "dynamic-coloring", "index": ALL}, "value"),
 )
-def update_plot(
+def update_data(
     input_value, output_value, plot_selected_data, plot_click_data, color_by
 ):
-    context = dash.callback_context
+    """Handles data updates and synchronizes across elements.
 
+    """
+    # use triggered context to get the origin of the action
+    context = dash.callback_context
     triggered = context.triggered[0]
+
     selected_points = []
+
+    # list of no updates markers to pass to the x values for the card plots
     updated = [dash.no_update for i in range(len(plot_selected_data))]
 
+    # get latest cached dataframe
     df = dataframe()
 
-    # update selected data
+    # data has been selected, update selection across cards
     if ".selectedData" in triggered["prop_id"]:
         if triggered["value"]:
             selected_points = triggered["value"]["points"]
@@ -682,7 +695,7 @@ def update_plot(
                 dash.no_update,
             )
 
-    # update input/output values
+    # A value has been updated in a dropdown, update the single scatter plot
     elif ".value" in triggered["prop_id"]:
         prop_id = json.loads(triggered["prop_id"].replace(".value", ""))
         prop_idx = prop_id["index"]
@@ -696,6 +709,7 @@ def update_plot(
                 point["pointIndex"] for point in plot_selected_data[0]["points"]
             ]
 
+        # update the scatter plot at a given index, all others remain same
         updated[CARD_INDICES[prop_idx]] = get_scatter(
             df,
             input_value[CARD_INDICES[prop_idx]],
@@ -705,6 +719,8 @@ def update_plot(
         )
         return updated, dash.no_update, dash.no_update, dash.no_update
 
+    # a single point has been clicked, update selection across cards, 
+    # associated image with point, and input/output data tables
     elif ".clickData" in triggered["prop_id"]:
         if triggered["value"]:
             selected_point = triggered["value"]["points"][0]["pointIndex"]
@@ -713,6 +729,7 @@ def update_plot(
                 get_scatter(df, input_value[i], output_value[i], [selected_point], None)
                 for i in range(len(plot_selected_data))
             ]
+
             img_file = df["plot_file"].iloc[selected_point]
 
             # update data tables
@@ -746,6 +763,9 @@ def update_plot(
     State("dynamic-plots", "children"),
 )
 def update_cards(n_clicks, n_clicks_remove, remove_id, children):
+    """Updates number of cards if addition/deletion
+
+    """
     # prevent update if no clicks
     if n_clicks == 0 and not any(n_clicks_remove):
         raise dash.exceptions.PreventUpdate
@@ -755,10 +775,11 @@ def update_cards(n_clicks, n_clicks_remove, remove_id, children):
 
     df = dataframe()
 
-    # use context to see if remove was pushed
+    # use context to see if remove button was pushed
     context = dash.callback_context
     triggered = context.triggered[0]
 
+    # if removed must adjust all card indices \
     if "dynamic-remove" in triggered["prop_id"]:
         prop_id = json.loads(triggered["prop_id"].replace(".n_clicks", ""))
         prop_idx = prop_id["index"]
@@ -770,6 +791,7 @@ def update_cards(n_clicks, n_clicks_remove, remove_id, children):
             if CARD_INDICES[item] > card_idx:
                 CARD_INDICES[item] -= 1
 
+    # otherwise, a card has been added
     else:
         card = build_card(df)
         children.insert(-1, card)
@@ -784,16 +806,22 @@ def update_cards(n_clicks, n_clicks_remove, remove_id, children):
     Input("explore-dropdown", "value"),
 )
 def update_explore_table(selected_values):
+    """Handles updates to the exploration table dropdown and updates table accordingly.
+
+    """
+
+    # get latest cached dataframe
     df = dataframe()
 
+    # Handle table reset to defaults
     if "Reset" in selected_values:
         df = df[TABLE_DEFAULTS]
         selection = TABLE_DEFAULTS
-
     else:
         df = df[selected_values]
         selection = selected_values
 
+    # format columns
     columns = [
         {
             "name": i,
@@ -810,10 +838,9 @@ def update_explore_table(selected_values):
     return data, columns, selection
 
 def main():
+    """Main method for app entrypoint
+    """
     app.run_server(host="0.0.0.0")
-
-
-
 
 if __name__ == "__main__":
     main()
