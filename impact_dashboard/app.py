@@ -256,7 +256,7 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
                                 html.Div(
                                     dcc.Dropdown(
                                         id={
-                                            "type": "dynamic-input",
+                                            "type": "dynamic-x",
                                             "index": CARD_COUNT,
                                         },
                                         options=options,
@@ -287,7 +287,7 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
                                 html.Div(
                                     dcc.Dropdown(
                                         id={
-                                            "type": "dynamic-output",
+                                            "type": "dynamic-y",
                                             "index": CARD_COUNT,
                                         },
                                         options=options,
@@ -646,8 +646,8 @@ init_dashboard()
     Output("dash-image", "src"),
     Output("input-table", "data"),
     Output("output-table", "data"),
-    Input({"type": "dynamic-input", "index": ALL}, "value"),
-    Input({"type": "dynamic-output", "index": ALL}, "value"),
+    Input({"type": "dynamic-x", "index": ALL}, "value"),
+    Input({"type": "dynamic-y", "index": ALL}, "value"),
     Input({"type": "scatter-plot", "index": ALL}, "selectedData"),
     Input({"type": "scatter-plot", "index": ALL}, "clickData"),
     Input({"type": "dynamic-coloring", "index": ALL}, "value"),
