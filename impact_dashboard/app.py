@@ -1,9 +1,9 @@
 """Instantiate a Dash app."""
 import dash
-import dash_core_components as dcc
 import dash_bootstrap_components as dbc
-import dash_html_components as html
+from dash import html
 from dash import dash_table
+from dash import dcc
 from dash.dash_table.Format import Format, Scheme
 from flask_caching import Cache
 import numpy as np
@@ -18,8 +18,6 @@ import copy
 from impact_dashboard.layout import html_layout
 from impact_dashboard import CONFIG
 import dash_defer_js_import as dji
-
-
 
 from pmd_beamphysics.labels import texlabel
 
@@ -50,7 +48,6 @@ app = dash.Dash(
 cache = Cache(
     app.server, config={"CACHE_TYPE": "filesystem", "CACHE_DIR": "cache-directory"}
 )
-
 
 TIMEOUT = 10
 
@@ -206,12 +203,11 @@ def get_label(item: str):
         item = item.replace("end_", "")
 
     label = texlabel(item)
-    if item == label:
+    if not label:
         return item
     
     else:
         return f"$${label}$$"
-      #  return label
 
 
 def build_card(df, x: str = None, y: str = None, selected_data: list = None):
@@ -813,6 +809,11 @@ def update_explore_table(selected_values):
 
     return data, columns, selection
 
+def main():
+    app.run_server(host="0.0.0.0")
+
+
+
 
 if __name__ == "__main__":
-    app.run_server()
+    main()

@@ -1,8 +1,8 @@
 plotly
 pandas
-dash
-pmd-beamphysics
-dash-bootstrap-components
+dash==2.0.0
+openpmd-beamphysics
+dash-bootstrap-components==0.13
 flask-caching
 pymongo
 dash-defer-js-import
