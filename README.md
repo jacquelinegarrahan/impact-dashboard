@@ -3,6 +3,10 @@ This repository hosts the source code for the impact dashboard. This must be run
 
 Running requires the setting of `MONGO_HOST` and `MONGO_PORT` environment variables.
 
+```
+docker run -e MONGO_PORT=27017 -e MONGO_HOST=172.20.3.134 -p "8050:8050" -v "/Users/jgarra/sandbox/impact/output-files:/app/files" -t impact-dash
+```
+
 ## TODO:
 - [x] Add optional color by column selection. Use linear color mapping, viridis, jet etc.
  add optional coloring toggle to plotly menu?  
@@ -27,7 +31,7 @@ Running requires the setting of `MONGO_HOST` and `MONGO_PORT` environment variab
 - [x] exclude stop
 - [x] Add archive file back to side tables
 - [x] Group table items intelligently, like all magnets together
-- [ ] Move dynamic-input/ dynamic-output to x and y
+- [x] Move dynamic-input/ dynamic-output to x and y
 - [x] Fix header overlap datatable
 - [x] Use Chris's defaults for the dashboard
 - [x] Fix regular text in latex
@@ -35,9 +39,10 @@ Running requires the setting of `MONGO_HOST` and `MONGO_PORT` environment variab
 - [ ] Add label aliases to explore table columns
 - [ ] Cache flushing
 - [ ] norm_emit_z, norm_emit_xy not rendering
-- [ ] Update openPMD installation
+- [x] Update openPMD installation
 - [ ] Add port to args for launch
-
+- [ ] Dockerize
+- [ ] Passable configuration file for app rendering
 
 ## Known issues
 There are some quirks with the rendering.

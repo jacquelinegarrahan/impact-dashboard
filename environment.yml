@@ -6,9 +6,9 @@ dependencies:
   - python=3.9
   - plotly
   - pandas
-  - dash
-  - openpmd-beamphysics =0.5.6
-  - dash-bootstrap-components
+  - dash =2.0.0
+  - openpmd-beamphysics =0.5.7
+  - dash-bootstrap-components =0.13
   - flask-caching
   - pymongo
   - pip

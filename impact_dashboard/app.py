@@ -1,9 +1,9 @@
 """Instantiate a Dash app."""
 import dash
-import dash_core_components as dcc
 import dash_bootstrap_components as dbc
-import dash_html_components as html
+from dash import html
 from dash import dash_table
+from dash import dcc
 from dash.dash_table.Format import Format, Scheme
 from flask_caching import Cache
 import numpy as np
@@ -18,8 +18,6 @@ import copy
 from impact_dashboard.layout import html_layout
 from impact_dashboard import CONFIG
 import dash_defer_js_import as dji
-
-
 
 from pmd_beamphysics.labels import texlabel
 
@@ -50,7 +48,6 @@ app = dash.Dash(
 cache = Cache(
     app.server, config={"CACHE_TYPE": "filesystem", "CACHE_DIR": "cache-directory"}
 )
-
 
 TIMEOUT = 10
 
@@ -201,17 +198,19 @@ TABLE_DEFAULTS = [
 
 
 def get_label(item: str):
+    """Utility function for stripping end prefix from label and formatting
+    for LaTeX rendering.
+    """
 
     if "end_" in item:
         item = item.replace("end_", "")
 
     label = texlabel(item)
-    if item == label:
+    if not label:
         return item
     
     else:
         return f"$${label}$$"
-      #  return label
 
 
 def build_card(df, x: str = None, y: str = None, selected_data: list = None):
@@ -257,7 +256,7 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
                                 html.Div(
                                     dcc.Dropdown(
                                         id={
-                                            "type": "dynamic-input",
+                                            "type": "dynamic-x",
                                             "index": CARD_COUNT,
                                         },
                                         options=options,
@@ -288,7 +287,7 @@ def build_card(df, x: str = None, y: str = None, selected_data: list = None):
                                 html.Div(
                                     dcc.Dropdown(
                                         id={
-                                            "type": "dynamic-output",
+                                            "type": "dynamic-y",
                                             "index": CARD_COUNT,
                                         },
                                         options=options,
@@ -427,6 +426,8 @@ def get_scatter(df, x_col, y_col, selectedpoints, color_by=None):
 
 @cache.memoize(timeout=TIMEOUT)
 def get_df():
+    """Function used for updating the cached dataframe.
+    """
     # get data
     CLIENT = MongoClient(MONGO_HOST, MONGO_PORT)
     DB = CLIENT.impact
@@ -449,10 +450,12 @@ def dataframe():
 
 
 def init_dashboard():
-    """Create a Plotly Dash dashboard."""
+    """Create and format Plotly Dash dashboard."""
 
+    # get initial latest cached df
     df = dataframe()
 
+    # create a representation of all inputs for use with table using appropriate number of sig figs
     input_rep = [
         {
             "inputs": get_label(ALL_INPUTS[i]),
@@ -466,6 +469,7 @@ def init_dashboard():
         for i in range(len(DROPDOWN_INPUTS))
     ]
 
+    # create a representation of all inputs for use with table using appropriate number of sig figs
     output_rep = [
         {
             "outputs": get_label(ALL_OUTPUTS[i]),
@@ -479,6 +483,7 @@ def init_dashboard():
         for i in range(len(DROPDOWN_OUTPUTS))
     ]
 
+    # Format columns for explore table indicating number of sig figs for numeric types
     explore_table_cols = [
         {
             "name": i,
@@ -627,37 +632,45 @@ def init_dashboard():
             latex_refresh_script,
             mathjax_script,
         ]
-    )
-                      
+    )                   
 
 
 # initialize dashboard
 init_dashboard()
 
 
+# REGISTER APP CALLBACKS
+
 @app.callback(
     Output({"type": "scatter-plot", "index": ALL}, "figure"),
     Output("dash-image", "src"),
     Output("input-table", "data"),
     Output("output-table", "data"),
-    Input({"type": "dynamic-input", "index": ALL}, "value"),
-    Input({"type": "dynamic-output", "index": ALL}, "value"),
+    Input({"type": "dynamic-x", "index": ALL}, "value"),
+    Input({"type": "dynamic-y", "index": ALL}, "value"),
     Input({"type": "scatter-plot", "index": ALL}, "selectedData"),
     Input({"type": "scatter-plot", "index": ALL}, "clickData"),
     Input({"type": "dynamic-coloring", "index": ALL}, "value"),
 )
-def update_plot(
-    input_value, output_value, plot_selected_data, plot_click_data, color_by
+def update_data(
+    x_value, y_value, plot_selected_data, plot_click_data, color_by
 ):
-    context = dash.callback_context
+    """Handles data updates and synchronizes across elements.
 
+    """
+    # use triggered context to get the origin of the action
+    context = dash.callback_context
     triggered = context.triggered[0]
+
     selected_points = []
+
+    # list of no updates markers to pass to the x values for the card plots
     updated = [dash.no_update for i in range(len(plot_selected_data))]
 
+    # get latest cached dataframe
     df = dataframe()
 
-    # update selected data
+    # data has been selected, update selection across cards
     if ".selectedData" in triggered["prop_id"]:
         if triggered["value"]:
             selected_points = triggered["value"]["points"]
@@ -666,7 +679,7 @@ def update_plot(
             return (
                 [
                     get_scatter(
-                        df, input_value[i], output_value[i], selected_points, None
+                        df, x_value[i], y_value[i], selected_points, None
                     )
                     for i in range(len(plot_selected_data))
                 ],
@@ -678,7 +691,7 @@ def update_plot(
         else:
             return (
                 [
-                    get_scatter(df, input_value[i], output_value[i], None, color_by[i])
+                    get_scatter(df, x_value[i], y_value[i], None, color_by[i])
                     for i in range(len(plot_selected_data))
                 ],
                 dash.no_update,
@@ -686,7 +699,7 @@ def update_plot(
                 dash.no_update,
             )
 
-    # update input/output values
+    # A value has been updated in a dropdown, update the single scatter plot
     elif ".value" in triggered["prop_id"]:
         prop_id = json.loads(triggered["prop_id"].replace(".value", ""))
         prop_idx = prop_id["index"]
@@ -700,23 +713,27 @@ def update_plot(
                 point["pointIndex"] for point in plot_selected_data[0]["points"]
             ]
 
+        # update the scatter plot at a given index, all others remain same
         updated[CARD_INDICES[prop_idx]] = get_scatter(
             df,
-            input_value[CARD_INDICES[prop_idx]],
-            output_value[CARD_INDICES[prop_idx]],
+            x_value[CARD_INDICES[prop_idx]],
+            y_value[CARD_INDICES[prop_idx]],
             selected_points,
             color_by[CARD_INDICES[prop_idx]],
         )
         return updated, dash.no_update, dash.no_update, dash.no_update
 
+    # a single point has been clicked, update selection across cards, 
+    # associated image with point, and input/output data tables
     elif ".clickData" in triggered["prop_id"]:
         if triggered["value"]:
             selected_point = triggered["value"]["points"][0]["pointIndex"]
 
             plot_returns = [
-                get_scatter(df, input_value[i], output_value[i], [selected_point], None)
+                get_scatter(df, x_value[i], y_value[i], [selected_point], None)
                 for i in range(len(plot_selected_data))
             ]
+
             img_file = df["plot_file"].iloc[selected_point]
 
             # update data tables
@@ -750,6 +767,9 @@ def update_plot(
     State("dynamic-plots", "children"),
 )
 def update_cards(n_clicks, n_clicks_remove, remove_id, children):
+    """Updates number of cards if addition/deletion
+
+    """
     # prevent update if no clicks
     if n_clicks == 0 and not any(n_clicks_remove):
         raise dash.exceptions.PreventUpdate
@@ -759,10 +779,11 @@ def update_cards(n_clicks, n_clicks_remove, remove_id, children):
 
     df = dataframe()
 
-    # use context to see if remove was pushed
+    # use context to see if remove button was pushed
     context = dash.callback_context
     triggered = context.triggered[0]
 
+    # if removed must adjust all card indices \
     if "dynamic-remove" in triggered["prop_id"]:
         prop_id = json.loads(triggered["prop_id"].replace(".n_clicks", ""))
         prop_idx = prop_id["index"]
@@ -774,6 +795,7 @@ def update_cards(n_clicks, n_clicks_remove, remove_id, children):
             if CARD_INDICES[item] > card_idx:
                 CARD_INDICES[item] -= 1
 
+    # otherwise, a card has been added
     else:
         card = build_card(df)
         children.insert(-1, card)
@@ -788,16 +810,22 @@ def update_cards(n_clicks, n_clicks_remove, remove_id, children):
     Input("explore-dropdown", "value"),
 )
 def update_explore_table(selected_values):
+    """Handles updates to the exploration table dropdown and updates table accordingly.
+
+    """
+
+    # get latest cached dataframe
     df = dataframe()
 
+    # Handle table reset to defaults
     if "Reset" in selected_values:
         df = df[TABLE_DEFAULTS]
         selection = TABLE_DEFAULTS
-
     else:
         df = df[selected_values]
         selection = selected_values
 
+    # format columns
     columns = [
         {
             "name": i,
@@ -813,6 +841,10 @@ def update_explore_table(selected_values):
 
     return data, columns, selection
 
+def main():
+    """Main method for app entrypoint
+    """
+    app.run_server(host="0.0.0.0")
 
 if __name__ == "__main__":
-    app.run_server()
+    main()
