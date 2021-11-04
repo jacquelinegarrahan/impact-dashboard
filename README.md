@@ -1,11 +1,73 @@
 # impact-dashboard
-This repository hosts the source code for the impact dashboard. This must be run using a Chrome browser, version compatability currently unknown. The dashboard has been tested against Chrome=v94. The rendering of LaTeX labels is broken in Firefox at present.
+This repository hosts the source code for the impact dashboard. This must be run using a Chrome browser, version compatability currently unknown. 
 
-Running requires the setting of `MONGO_HOST` and `MONGO_PORT` environment variables.
+## Run locally
+
+
+Create environment
+```
+conda env create -f examples/local-environment.yml
+conda activate impact-dashboard-local
+```
+
+Set environment variables
+```
+$ export MONGO_PORT=27017
+$ export MONGO_HOST=localhost
+$ export OUTPUT_DIR=/path/to/impact/output
+```
+
+Start mongodb
+```
+$ mkdir mongodb_data # db path
+$ touch mongodb_log # log data path
+$ mongod --port $MONGO_PORT --dbpath mongodb_data --fork --logpath mongodb_log
+```
+
+Backfill existing results:
+```
+$ import-docs
+```
+
+Start monitor:
+```
+$ start-monitor &
+```
+
+Launch dashboard:
+```
+$ launch-app
+```
+
+
+
+
+
+
+
+
+
+
+## Docker
+
+
+Running requires the setting of `MONGO_HOST`, `MONGO_PORT`, and `OUTPUT_DIR` environment variables.
 
 ```
-docker run -e MONGO_PORT=27017 -e MONGO_HOST=172.20.3.134 -p "8050:8050" -v "/Users/jgarra/sandbox/impact/output-files:/app/files" -t impact-dash
+docker run -e MONGO_PORT=$MONGO_PORT -e MONGO_HOST=$MONGO_HOST -p "8050:8050" -v $OUTPUT_DIR:/app/files" -t impact-dash
 ```
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## TODO:
 - [x] Add optional color by column selection. Use linear color mapping, viridis, jet etc.
@@ -43,6 +105,10 @@ docker run -e MONGO_PORT=27017 -e MONGO_HOST=172.20.3.134 -p "8050:8050" -v "/Us
 - [ ] Add port to args for launch
 - [ ] Dockerize
 - [ ] Passable configuration file for app rendering
+- [ ] Link table selection
+- [ ] Change colors selection model
+- [ ] make points smaller
+- [ ] Clear color by selection
 
 ## Known issues
 There are some quirks with the rendering.

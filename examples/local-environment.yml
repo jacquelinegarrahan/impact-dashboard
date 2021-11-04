@@ -1,0 +1,19 @@
+name: impact-dashboard-local
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - mongodb
+  - plotly
+  - pandas
+  - dash =2.0.0
+  - openpmd-beamphysics =0.5.7
+  - dash-bootstrap-components =0.13
+  - flask-caching
+  - pymongo
+  - python-dateutil
+  - watchdog
+  - pip
+  - pip:
+    - git+git://github.com/jacquelinegarrahan/impact-monitor.git
+    - git+git://github.com/jacquelinegarrahan/impact-dashboard.git
