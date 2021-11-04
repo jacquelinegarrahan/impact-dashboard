@@ -19,7 +19,7 @@ setup(
     install_requires=requirements,
     url="https://github.com/jacquelinegarrahan/impact-dashboard",
     include_package_data=True,
-    python_requires=">=3.9",
+    python_requires=">=3.7",
     entry_points={
         "console_scripts": [
         "launch-app=impact_dashboard.app:main",
