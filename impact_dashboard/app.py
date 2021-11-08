@@ -841,10 +841,14 @@ def update_explore_table(selected_values):
 
     return data, columns, selection
 
-def main():
+def main(port=8050):
     """Main method for app entrypoint
     """
-    app.run_server(host="0.0.0.0")
+    import sys
+    if len(sys.argv) > 1:
+        port = sys.argv[1]
+
+    app.run_server(host="0.0.0.0", port=port)
 
 if __name__ == "__main__":
     main()
