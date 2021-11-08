@@ -33,7 +33,7 @@ EXCLUDE_ALL_OUTPUTS = ["plot_file", "fingerprint", "isotime"]
 EXCLUDE_PLOT_INPUTS = []
 EXCLUDE_PLOT_OUTPUTS = ["plot_file", "fingerprint", "archive", "isotime"]
 
-latex_refresh_script = dji.Import(src="./assets/mathjax_test.js")
+latex_refresh_script = dji.Import(src="./assets/mathjax_update.js")
 mathjax_script = dji.Import(
     src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_SVG"
 )
