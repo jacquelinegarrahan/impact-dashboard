@@ -40,7 +40,7 @@ $ start-monitor &
 
 Launch dashboard:
 ```
-$ launch-app
+$ launch-app 8050
 ```
 
 Navigate to localhost:8050 using Chrome on your personal computer.
@@ -54,17 +54,6 @@ Running requires the setting of `MONGO_HOST`, `MONGO_PORT`, and `OUTPUT_DIR` env
 ```
 docker run -e MONGO_PORT=$MONGO_PORT -e MONGO_HOST=$MONGO_HOST -p "8050:8050" -v $OUTPUT_DIR:/app/files" -t impact-dash
 ```
-
-
-
-
-
-
-
-
-
-
-
 
 
 ## TODO:
@@ -107,6 +96,7 @@ docker run -e MONGO_PORT=$MONGO_PORT -e MONGO_HOST=$MONGO_HOST -p "8050:8050" -v
 - [ ] Change colors selection model
 - [ ] make points smaller
 - [ ] Clear color by selection
+- [ ] Custom port
 
 ## Known issues
 There are some quirks with the rendering.
