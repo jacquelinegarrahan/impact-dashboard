@@ -1,13 +1,17 @@
 # impact-dashboard
-This repository hosts the source code for the impact dashboard. This must be run using a Chrome browser, version compatability currently unknown. 
+This repository hosts the source code for the impact dashboard. . This must be run using a Chrome browser, version compatability currently unknown. The dashboard has been tested against Chrome=v94. The rendering of LaTeX labels is broken in Firefox at present.
 
-## Run locally
+## Run locally (on sdf)
 
+First ssh using port forwarding:
+```
+$ ssh -L 8050:localhost:8050 sdf-login.slac.stanford.edu
+```
 
 Create environment
 ```
-conda env create -f examples/local-environment.yml
-conda activate impact-dashboard-local
+$ conda env create -f examples/local-environment.yml
+$ conda activate impact-dashboard-local
 ```
 
 Set environment variables
@@ -39,13 +43,7 @@ Launch dashboard:
 $ launch-app
 ```
 
-
-
-
-
-
-
-
+Navigate to localhost:8050 using Chrome on your personal computer.
 
 
 ## Docker
