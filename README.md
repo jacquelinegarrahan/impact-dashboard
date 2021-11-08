@@ -96,7 +96,7 @@ docker run -e MONGO_PORT=$MONGO_PORT -e MONGO_HOST=$MONGO_HOST -p "8050:8050" -v
 - [ ] Change colors selection model
 - [ ] make points smaller
 - [ ] Clear color by selection
-- [ ] Custom port
+- [x] Custom port
 
 ## Known issues
 There are some quirks with the rendering.
