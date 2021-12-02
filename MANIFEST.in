@@ -1,3 +1,4 @@
 include versioneer.py
 include impact_dashboard/_version.py
 include impact_dashboard/config.ini
+include impact_dashboard/assets/mathjax_update.js
