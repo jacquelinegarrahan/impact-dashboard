@@ -86,17 +86,18 @@ docker run -e MONGO_PORT=$MONGO_PORT -e MONGO_HOST=$MONGO_HOST -p "8050:8050" -v
 - [x] Fix regular text in latex
 - [x] Fix callstack error
 - [ ] Add label aliases to explore table columns
-- [ ] Cache flushing
+- [x] Cache flushing
 - [ ] norm_emit_z, norm_emit_xy not rendering
 - [x] Update openPMD installation
-- [ ] Add port to args for launch
+- [x] Add port to args for launch
 - [ ] Dockerize
 - [ ] Passable configuration file for app rendering
 - [ ] Link table selection
 - [ ] Change colors selection model
-- [ ] make points smaller
+- [x] make points smaller
 - [ ] Clear color by selection
 - [x] Custom port
+- [x] Fix asset loading SDF
 
 ## Known issues
 There are some quirks with the rendering.
