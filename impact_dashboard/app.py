@@ -16,6 +16,7 @@ from dash.dependencies import Input, Output, ClientsideFunction, State, MATCH, A
 import os
 import copy
 from impact_dashboard.layout import html_layout
+from pkg_resources import resource_filename
 from impact_dashboard import CONFIG
 import dash_defer_js_import as dji
 
@@ -33,7 +34,9 @@ EXCLUDE_ALL_OUTPUTS = ["plot_file", "fingerprint", "isotime"]
 EXCLUDE_PLOT_INPUTS = []
 EXCLUDE_PLOT_OUTPUTS = ["plot_file", "fingerprint", "archive", "isotime"]
 
-latex_refresh_script = dji.Import(src="./assets/mathjax_update.js")
+LATEX_REFRESH=resource_filename("impact_dashboard.assets", "mathjax_update.js")
+
+latex_refresh_script = dji.Import(src=LATEX_REFRESH)
 mathjax_script = dji.Import(
     src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_SVG"
 )
