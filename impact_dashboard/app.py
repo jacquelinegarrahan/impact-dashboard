@@ -19,7 +19,7 @@ from impact_dashboard.layout import html_layout
 from pkg_resources import resource_filename
 from impact_dashboard import CONFIG
 import dash_defer_js_import as dji
-
+import atexit
 from pmd_beamphysics.labels import texlabel
 
 MONGO_HOST = os.environ["MONGO_HOST"]
@@ -34,15 +34,13 @@ EXCLUDE_ALL_OUTPUTS = ["plot_file", "fingerprint", "isotime"]
 EXCLUDE_PLOT_INPUTS = []
 EXCLUDE_PLOT_OUTPUTS = ["plot_file", "fingerprint", "archive", "isotime"]
 
-LATEX_REFRESH=resource_filename("impact_dashboard.assets", "mathjax_update.js")
-
-latex_refresh_script = dji.Import(src=LATEX_REFRESH)
 mathjax_script = dji.Import(
     src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_SVG"
 )
 
 app = dash.Dash(
-    external_stylesheets=[dbc.themes.DARKLY],
+    __name__,
+    external_stylesheets=[dbc.themes.DARKLY, "./assets/dropdown.css"],
     external_scripts=[
         "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_SVG",
     ],
@@ -51,6 +49,7 @@ app = dash.Dash(
 cache = Cache(
     app.server, config={"CACHE_TYPE": "filesystem", "CACHE_DIR": "cache-directory"}
 )
+atexit.register(cache.clear)
 
 TIMEOUT = 10
 
@@ -403,7 +402,7 @@ def get_scatter(df, x_col, y_col, selectedpoints, color_by=None):
         fig.update_traces(
             selectedpoints=selectedpoints,
             mode="markers+text",
-            marker={"color": CONFIG["scatter"]["selected-marker-color"], "size": 15},
+            marker={"color": CONFIG["scatter"]["selected-marker-color"], "size": CONFIG["scatter"]["marker-size"]},
             unselected={
                 "marker": {"color": CONFIG["scatter"]["marker-color"]},
                 "textfont": {"color": "rgba(0, 0, 0, 0)"},
@@ -632,7 +631,6 @@ def init_dashboard():
                 fixed_rows={"headers": True},
             ),
             ###### important for latex ######
-            latex_refresh_script,
             mathjax_script,
         ]
     )                   
@@ -844,6 +842,8 @@ def update_explore_table(selected_values):
 
     return data, columns, selection
 
+
+
 def main(port=8050):
     """Main method for app entrypoint
     """
@@ -851,7 +851,8 @@ def main(port=8050):
     if len(sys.argv) > 1:
         port = sys.argv[1]
 
-    app.run_server(host="0.0.0.0", port=port)
+    app.run_server(host="0.0.0.0", port=port, debug=True)
+
 
 if __name__ == "__main__":
     main()
