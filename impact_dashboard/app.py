@@ -402,7 +402,7 @@ def get_scatter(df, x_col, y_col, selectedpoints, color_by=None):
         fig.update_traces(
             selectedpoints=selectedpoints,
             mode="markers+text",
-            marker={"color": CONFIG["scatter"]["selected-marker-color"], "size": 15},
+            marker={"color": CONFIG["scatter"]["selected-marker-color"], "size": CONFIG["scatter"]["marker-size"]},
             unselected={
                 "marker": {"color": CONFIG["scatter"]["marker-color"]},
                 "textfont": {"color": "rgba(0, 0, 0, 0)"},
