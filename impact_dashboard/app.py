@@ -745,6 +745,7 @@ def update_data(
                     "value": df[ALL_INPUTS[i]].iloc[selected_point],
                 }
                 for i in range(len(ALL_INPUTS))
+                if ALL_INPUTS[i] in df.columns
             ]
             output_rep = [
                 {
