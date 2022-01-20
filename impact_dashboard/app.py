@@ -9,7 +9,7 @@ from flask_caching import Cache
 import numpy as np
 import json
 import math
-impoer base64
+import base64
 import pandas as pd
 import plotly.express as px
 from pymongo import MongoClient
