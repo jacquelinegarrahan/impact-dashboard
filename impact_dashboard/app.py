@@ -463,7 +463,7 @@ def init_dashboard():
             "inputs": get_label(ALL_INPUTS[i]),
             "value": format(df[DROPDOWN_INPUTS[i]].iloc[0], f".{CONFIG['tables']['n_sig_figs']}g"),
         }
-        if isinstance(df[DROPDOWN_INPUTS[i]].iloc[0], float)
+        if DROPDOWN_INPUTS[i] in df.columns and isinstance(df[DROPDOWN_INPUTS[i]].iloc[0], float)
         else {
             "inputs": get_label(ALL_INPUTS[i]),
             "value": df[DROPDOWN_INPUTS[i]].iloc[0],
