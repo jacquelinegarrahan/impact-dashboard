@@ -469,6 +469,7 @@ def init_dashboard():
             "value": df[DROPDOWN_INPUTS[i]].iloc[0],
         }
         for i in range(len(DROPDOWN_INPUTS))
+        if DROPDOWN_INPUTS[i] in df.columns
     ]
 
     # create a representation of all inputs for use with table using appropriate number of sig figs
