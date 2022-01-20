@@ -740,6 +740,9 @@ def update_data(
             ]
 
             img_file = df["plot_file"].iloc[selected_point]
+            
+            encoded_img = base64.b64encode(open(img_file, 'rb').read()).decode('ascii')
+            img_src=f'data:image/png;base64,{encoded_img}'
 
             # update data tables
             input_rep = [
@@ -758,7 +761,7 @@ def update_data(
                 for i in range(len(ALL_OUTPUTS))
             ]
 
-            return plot_returns, img_file, input_rep, output_rep
+            return plot_returns, img_src, input_rep, output_rep
 
     else:
         pass
