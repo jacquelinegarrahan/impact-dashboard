@@ -9,6 +9,7 @@ from flask_caching import Cache
 import numpy as np
 import json
 import math
+impoer base64
 import pandas as pd
 import plotly.express as px
 from pymongo import MongoClient
@@ -502,6 +503,8 @@ def init_dashboard():
     # Custom HTML layout
     app.index_string = html_layout
 
+    encoded_img = base64.b64encode(open(df["plot_file"].iloc[0], 'rb').read()).decode('ascii')
+
 
     # Create Layout
     app.layout = html.Div(
@@ -510,7 +513,7 @@ def init_dashboard():
                 children=[
                     html.Img(
                         id="dash-image",
-                        src=df["plot_file"].iloc[0],
+                        src=f'data:image/png;base64,{encoded_img}',
                         style={"width": CONFIG["dash"]["width"], "height": CONFIG["dash"]["height"]},
                     ),
                     dash_table.DataTable(
