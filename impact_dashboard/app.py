@@ -22,9 +22,16 @@ from impact_dashboard import CONFIG
 import dash_defer_js_import as dji
 import atexit
 from pmd_beamphysics.labels import texlabel
+from string import Template
+
 
 MONGO_HOST = os.environ["MONGO_HOST"]
 MONGO_PORT = int(os.environ["MONGO_PORT"])
+MONGO_USERNAME = os.environ["MONGO_USERNAME"]
+MONGO_PASSWORD = os.environ["MONGO_PASSWORD"]
+
+DB_URI = Template("mongodb://${user}:${password}@${host}:${port}").substitute(user=MONGO_USERNAME, password=MONGO_PASSWORD, host=MONGO_HOST, port=str(MONGO_PORT))
+CLIENT = MongoClient(DB_URI)
 
 
 DEFAULT_INPUT = "distgen:n_particle"
@@ -67,7 +74,6 @@ def flatten_dict(d):
     return dict(items)
 
 
-CLIENT = MongoClient(MONGO_HOST, MONGO_PORT)
 DB = CLIENT.impact
 
 # build outputs/inputs

@@ -5,7 +5,7 @@ This repository hosts the source code for the impact dashboard. . This must be r
 
 First ssh using port forwarding:
 ```
-$ ssh -L 8050:localhost:8050 sdf-login.slac.stanford.edu
+$ ssh -fNL 8050:localhost:8050 sdf-login.slac.stanford.edu
 ```
 
 Create environment
@@ -18,6 +18,8 @@ Set environment variables
 ```
 $ export MONGO_PORT=27017
 $ export MONGO_HOST=localhost
+$ export MONGO_PASSWORD=...
+$ export MONGO_USERNAME=...
 $ export OUTPUT_DIR=/path/to/impact/output
 ```
 
@@ -51,8 +53,9 @@ Navigate to localhost:8050 using Chrome on your personal computer.
 
 Running requires the setting of `MONGO_HOST`, `MONGO_PORT`, and `OUTPUT_DIR` environment variables.
 
+** Auth handling insecure.
 ```
-docker run -e MONGO_PORT=$MONGO_PORT -e MONGO_HOST=$MONGO_HOST -p "8050:8050" -v $OUTPUT_DIR:/app/files" -t impact-dash
+docker run -e MONGO_PORT=$MONGO_PORT -e MONGO_HOST=$MONGO_HOST -e MONGO_USERNAME=$MONGO_USERNAME -e MONGO_PASSWORD=$MONGO_PASSWORD -p "8050:8050" -v $OUTPUT_DIR:/app/files" -t impact-dash
 ```
 
 
