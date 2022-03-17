@@ -74,10 +74,9 @@ def flatten_dict(d):
     return dict(items)
 
 
-DB = CLIENT.impact
+results = CLIENT.model_results.impact
 
 # build outputs/inputs
-results = DB.results
 results = list(results.find())
 
 ALL_INPUTS = [
@@ -104,7 +103,7 @@ ALL_INPUTS = [
 
 ALL_OUTPUTS = [
     "end_max_r",
-    "end_sigma_z",
+#    "end_sigma_z",
     "end_max_amplitude_x",
     "end_mean_beta",
     "plot_file",
@@ -131,12 +130,12 @@ ALL_OUTPUTS = [
     "end_moment3_py",
     "end_moment3_z",
     "end_total_charge",
-    "fingerprint",
+#    "fingerprint",
     "archive",
     "end_max_amplitude_pz",
     "end_sigma_py",
     "end_mean_y",
-    "error",
+#    "error",
     "end_moment3_px",
     "end_mean_gamma",
     "end_cov_z__pz",
@@ -438,9 +437,8 @@ def get_df():
     """Function used for updating the cached dataframe.
     """
     # get data
-    CLIENT = MongoClient(MONGO_HOST, MONGO_PORT)
-    DB = CLIENT.impact
-    results = DB.results
+    CLIENT = MongoClient(DB_URI)
+    results = CLIENT.model_results.impact
     results = list(results.find())
 
     flattened = [flatten_dict(res) for res in results]
