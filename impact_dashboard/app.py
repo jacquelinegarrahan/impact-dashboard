@@ -23,6 +23,11 @@ import dash_defer_js_import as dji
 import atexit
 from pmd_beamphysics.labels import texlabel
 from string import Template
+from pkg_resources import resource_filename
+
+DROPDOWN_CSS =resource_filename(
+    "impact_dashboard.assets", "dropdown.css"
+)
 
 
 MONGO_HOST = os.environ["MONGO_HOST"]
@@ -48,7 +53,7 @@ mathjax_script = dji.Import(
 
 app = dash.Dash(
     __name__,
-    external_stylesheets=[dbc.themes.DARKLY, "./assets/dropdown.css"],
+    external_stylesheets=[dbc.themes.DARKLY, DROPDOWN_CSS],
     external_scripts=[
         "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_SVG",
     ],
