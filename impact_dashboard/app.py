@@ -25,9 +25,6 @@ from pmd_beamphysics.labels import texlabel
 from string import Template
 from pkg_resources import resource_filename
 
-DROPDOWN_CSS =resource_filename(
-    "impact_dashboard.assets", "dropdown.css"
-)
 
 
 MONGO_HOST = os.environ["MONGO_HOST"]
@@ -51,9 +48,17 @@ mathjax_script = dji.Import(
     src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_SVG"
 )
 
+
+#DROPDOWN_CSS =resource_filename(
+#    "impact_dashboard.assets", "dropdown.css"
+#)
+
+
+dir_path = os.path.dirname(os.path.realpath(__file__))
 app = dash.Dash(
     __name__,
-    external_stylesheets=[dbc.themes.DARKLY, DROPDOWN_CSS],
+    assets_folder=f"{dir_path}/assets",
+    external_stylesheets=[dbc.themes.DARKLY],
     external_scripts=[
         "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_SVG",
     ],
@@ -100,10 +105,10 @@ ALL_INPUTS = [
     "CQ01:b1_gradient",
     "SQ01:b1_gradient",
     "SOL1:solenoid_field_scale",
-    "distgen:t_dist:length:value",
-    "distgen:n_particle",
-    "distgen:xy_dist:file",
-    "change_timestep_1:dt",
+#    "distgen:t_dist:length:value",
+#    "distgen:n_particle",
+#    "distgen:xy_dist:file",
+#    "change_timestep_1:dt",
 ]
 
 ALL_OUTPUTS = [
