@@ -24,4 +24,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: jgarrahan/impact-dashboard:${{ github.ref_name }}
+          tags: jgarrahan/impact-dashboard:${{ github.ref_name }},jgarrahan/impact-dashboard:latest
